@@ -63,7 +63,7 @@ export const fetchVerseOfTheDay = async (translationId = '111') => {
 export const fetchBiblesByLanguage = async (languageTag: string) => {
   const cacheKey = `bibles_${languageTag}`;
   try {
-    const response = await fetch(`${API_BASE}/bibles?language_ranges[]=${languageTag}&all_available=true`, { headers: getHeaders() });
+    const response = await fetch(`${API_BASE}/bibles?language_ranges[]=${languageTag}&all_available=false`, { headers: getHeaders() });
     if (!response.ok) throw new Error('Failed to fetch bibles for language');
     const data = await response.json();
     
