@@ -1,5 +1,7 @@
 import { getBibleIndex, saveBibleIndex, getChapter, saveChapter, deleteOfflineBible } from './offlineDb';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { db } from '../firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 const API_BASE = 'https://api.youversion.com/v1';
 const API_KEY = 'RAhHurUzL1pk5kt9LwrGIaz0AdnX0obcIH6NNIayuvGogR7f'; 
@@ -10,14 +12,24 @@ const getHeaders = () => ({
 });
 
 export const fetchLanguages = async () => {
+  const cacheKey = 'bible_languages';
   try {
     const response = await fetch(`${API_BASE}/languages`, { headers: getHeaders() });
     if (!response.ok) throw new Error('Failed to fetch languages');
     const data = await response.json();
+    await AsyncStorage.setItem(cacheKey, JSON.stringify(data.data));
     return data.data; 
   } catch (error) {
-    console.error("Error fetching languages:", error);
-    return [];
+    console.warn("Falling back languages to cache/default due to API error");
+    const cached = await AsyncStorage.getItem(cacheKey);
+    if (cached) return JSON.parse(cached);
+
+    return [{
+      id: 39,
+      name: "English",
+      name_local: "English",
+      tag: "eng"
+    }];
   }
 };
 
@@ -49,13 +61,36 @@ export const fetchVerseOfTheDay = async (translationId = '111') => {
 };
 
 export const fetchBiblesByLanguage = async (languageTag: string) => {
+  const cacheKey = `bibles_${languageTag}`;
   try {
     const response = await fetch(`${API_BASE}/bibles?language_ranges[]=${languageTag}&all_available=true`, { headers: getHeaders() });
     if (!response.ok) throw new Error('Failed to fetch bibles for language');
     const data = await response.json();
+    
+    // Cache the successful response
+    await AsyncStorage.setItem(cacheKey, JSON.stringify(data.data));
     return data.data;
   } catch (error) {
-    console.error(`Error fetching bibles for ${languageTag}:`, error);
+    console.warn(`Falling back bibles for ${languageTag} to cache/default due to API error`);
+    
+    // Try to load from cache
+    const cached = await AsyncStorage.getItem(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
+    // Hardcoded fallback for English if everything fails
+    if (languageTag.toLowerCase().startsWith('en')) {
+      return [
+        { id: 111, abbreviation: 'NIV', localized_abbreviation: 'NIV', title: 'New International Version' },
+        { id: 59, abbreviation: 'ESV', localized_abbreviation: 'ESV', title: 'English Standard Version' },
+        { id: 1, abbreviation: 'KJV', localized_abbreviation: 'KJV', title: 'King James Version' },
+        { id: 114, abbreviation: 'NKJV', localized_abbreviation: 'NKJV', title: 'New King James Version' },
+        { id: 116, abbreviation: 'NLT', localized_abbreviation: 'NLT', title: 'New Living Translation' },
+        { id: 2692, abbreviation: 'NASB2020', localized_abbreviation: 'NASB', title: 'New American Standard Bible 2020' },
+        { id: 97, abbreviation: 'MSG', localized_abbreviation: 'MSG', title: 'The Message' },
+      ];
+    }
     return [];
   }
 };
@@ -111,7 +146,18 @@ export const fetchBibleIndex = async (translationId: string | number) => {
     
     return data;
   } catch (error) {
-    console.error(`Error fetching index for ${translationId}:`, error);
+    console.error(`Error fetching index from YouVersion for ${translationId}, falling back to Firestore:`, error);
+    try {
+      const docRef = doc(db, 'bibles', String(translationId));
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists() && docSnap.data().index) {
+        const fallbackData = docSnap.data().index;
+        sessionCache.set(cacheKey, fallbackData);
+        return fallbackData;
+      }
+    } catch (fbError) {
+      console.error(`Error fetching index from Firestore for ${translationId}:`, fbError);
+    }
     return null;
   }
 };
@@ -183,7 +229,18 @@ export const fetchChapterData = async (translationId: string | number, passageId
     
     return validVerses;
   } catch (error) {
-    console.error(`Error fetching chapter ${passageId} for ${translationId}:`, error);
+    console.error(`Error fetching chapter ${passageId} for ${translationId} from YouVersion, falling back to Firestore:`, error);
+    try {
+      const docRef = doc(db, 'bibles', String(translationId), 'chapters', passageId);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists() && docSnap.data().verses) {
+        const fallbackVerses = docSnap.data().verses;
+        sessionCache.set(cacheKey, fallbackVerses);
+        return fallbackVerses;
+      }
+    } catch (fbError) {
+      console.error(`Error fetching chapter ${passageId} from Firestore:`, fbError);
+    }
     return null;
   }
 };

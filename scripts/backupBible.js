@@ -79,6 +79,17 @@ async function backupBible(translationId) {
     return;
   }
   
+  // Upload Index to Firestore
+  try {
+    await db.collection('bibles').doc(String(translationId)).set({
+      index: indexData,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    console.log(`✅ Uploaded Index for ${translationId} to Firestore.`);
+  } catch (e) {
+    console.error(`❌ Error uploading index:`, e.message);
+  }
+
   const allPassageIds = [];
   for (const book of indexData.books) {
     for (const chapter of book.chapters) {
