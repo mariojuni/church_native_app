@@ -264,7 +264,7 @@ export const downloadBibleOffline = async (translationId: string | number) => {
     startBackgroundDownload(translationId, allPassageIds);
     return true;
   } catch (error) {
-    console.error("Error initiating offline download:", error);
+    console.warn("Error initiating offline download:", error);
     return false;
   }
 };
