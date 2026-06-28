@@ -108,7 +108,11 @@ export default function PrayerScreen() {
           {['Recent', 'My Requests', 'Answered'].map((f) => (
             <TouchableOpacity 
               key={f} 
-              style={[styles.pill, filter === f && styles.pillActive]}
+              style={[
+                styles.pill, 
+                filter === f && styles.pillActive,
+                filter === f && styles.pillShadow
+              ]}
               onPress={() => setFilter(f)}
             >
               <Text style={[styles.pillText, filter === f && styles.pillTextActive]}>{f}</Text>
@@ -147,7 +151,7 @@ export default function PrayerScreen() {
                     style={[styles.prayButton, isLiked && styles.prayButtonActive]}
                     onPress={() => handlePray(req.id)}
                   >
-                    <Heart size={14} color={isLiked ? '#fff' : '#007AFF'} fill={isLiked ? '#fff' : 'transparent'} />
+                    <Heart size={14} color={isLiked ? '#fff' : '#FF6596'} fill={isLiked ? '#fff' : 'transparent'} />
                     <Text style={[styles.prayButtonText, isLiked && styles.prayButtonTextActive]}>
                       {isLiked ? 'Prayed' : 'Pray'} ({req.likes || 0})
                     </Text>
@@ -173,15 +177,16 @@ export default function PrayerScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFF5F8' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingTop: 16, paddingBottom: 16 },
-  title: { fontSize: 34, fontWeight: '900', color: '#1a1a1a' },
-  searchButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
-  searchBar: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 20, paddingHorizontal: 16, height: 40, marginRight: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  title: { fontSize: 34, fontWeight: '900', color: '#1a1a1a', letterSpacing: -0.5 },
+  searchButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.8)', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)' },
+  searchBar: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 20, paddingHorizontal: 16, height: 40, marginRight: 12, shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 12, elevation: 2 },
   searchInput: { flex: 1, marginLeft: 8, fontSize: 16 },
   filterContainer: { paddingBottom: 12 },
-  filterScroll: { paddingHorizontal: 24, gap: 12 },
+  filterScroll: { paddingHorizontal: 24, gap: 16 },
   pill: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#fff', borderWidth: 1, borderColor: '#e1e4e8' },
-  pillActive: { backgroundColor: '#1a1a1a', borderColor: '#1a1a1a' },
-  pillText: { fontSize: 14, fontWeight: '600', color: '#666' },
+  pillActive: { backgroundColor: '#FF6596', borderColor: '#FF6596' },
+  pillShadow: { shadowColor: '#FF6596', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 4 },
+  pillText: { fontSize: 13, fontWeight: '600', color: '#666' },
   pillTextActive: { color: '#fff' },
   listContent: { padding: 24, paddingTop: 12, paddingBottom: 100, gap: 16 },
   emptyContainer: { alignItems: 'center', padding: 40 },
@@ -196,9 +201,9 @@ const styles = StyleSheet.create({
   cardTime: { fontSize: 12, color: '#888' },
   cardRequest: { fontSize: 14, color: '#444', lineHeight: 20, marginBottom: 16 },
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  prayButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E3F2FD', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, gap: 6 },
-  prayButtonActive: { backgroundColor: '#007AFF' },
-  prayButtonText: { fontSize: 12, fontWeight: 'bold', color: '#007AFF' },
+  prayButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFE8F0', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, gap: 6 },
+  prayButtonActive: { backgroundColor: '#FF6596' },
+  prayButtonText: { fontSize: 12, fontWeight: 'bold', color: '#FF6596' },
   prayButtonTextActive: { color: '#fff' },
   toggleText: { fontSize: 12, fontWeight: 'bold', color: '#4ADE80' },
   toggleTextActive: { color: '#888' },
