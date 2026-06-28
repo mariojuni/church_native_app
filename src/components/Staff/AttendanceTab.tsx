@@ -303,7 +303,7 @@ export default function AttendanceTab({ members, showStaffFeatures }: Attendance
 
       {/* Manual Check-in Modal */}
       <AppModal isOpen={isManualCheckinOpen} onClose={() => setIsManualCheckinOpen(false)} title="Manual Check-in">
-        <View style={{ paddingHorizontal: 24, paddingVertical: 16, flex: 1 }}>
+        <View style={{ paddingHorizontal: 24, paddingVertical: 16 }}>
           <View style={styles.searchWrapper}>
             <Search size={20} color="#888" style={styles.searchIcon} />
             <TextInput
