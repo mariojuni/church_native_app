@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, Crown, Users, Calendar, HeartHandshake, HandHeart, Grid, BarChart3, BookOpen, ChevronRight, Quote } from 'lucide-react-native';
+import { Search, Crown, Users, Calendar, HeartHandshake, HandHeart, Grid, BarChart3, BookOpen, ChevronRight, Quote, CheckCircle2, HelpCircle, XCircle } from 'lucide-react-native';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useMemberStore } from '../../store/useMemberStore';
 import { db } from '../../firebase';
-import { collection, query, orderBy, limit, onSnapshot, doc, runTransaction } from 'firebase/firestore';
+import { collection, query, orderBy, limit, onSnapshot, doc, runTransaction, where } from 'firebase/firestore';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -16,8 +16,9 @@ export default function HomeScreen() {
   const router = useRouter();
 
   const [latestPrayer, setLatestPrayer] = useState<any>(null);
+  const [upcomingEvent, setUpcomingEvent] = useState<any>(null);
   const [upcomingDuty, setUpcomingDuty] = useState<string | null>(null);
-  const [upcomingDutyDate, setUpcomingDutyDate] = useState<string | null>(null);
+  const [dutyStatus, setDutyStatus] = useState<string | null>(null);
 
   const displayName = userProfile?.name 
     ? userProfile.name.split(' ')[0] 
@@ -36,34 +37,46 @@ export default function HomeScreen() {
   }, []);
 
   useEffect(() => {
-    if (!currentUser) return;
-    const getNextSunday = () => {
-      const d = new Date();
-      d.setDate(d.getDate() + (7 - d.getDay()) % 7);
-      if (d.getDay() !== 0) d.setDate(d.getDate() + (7 - d.getDay()));
-      return d.toISOString().split('T')[0];
-    };
-    
-    const nextSundayStr = getNextSunday();
-    setUpcomingDutyDate(nextSundayStr);
-    const docRef = doc(db, 'schedules', nextSundayStr);
-    
-    const unsubscribe = onSnapshot(docRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        let duties = [];
-        if (data.openingPrayer === currentUser.uid) duties.push('Opening Prayer');
-        if (data.tithesOfferingPrayer === currentUser.uid) duties.push('Tithes & Offering Prayer');
-        if (data.scriptureReading === currentUser.uid) duties.push('Scripture Reading');
-        if (data.praiseWorship === currentUser.uid) duties.push('Praise & Worship');
-        if (data.ushers && data.ushers.includes(currentUser.uid)) duties.push('Usher');
-        setUpcomingDuty(duties.length > 0 ? duties.join(', ') : null);
+    const today = new Date().toISOString().split('T')[0];
+    const q = query(collection(db, 'schedules'), where('date', '>=', today), orderBy('date', 'asc'), limit(1));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (!snapshot.empty) {
+        const nextEvent = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as any;
+        setUpcomingEvent(nextEvent);
+
+        if (currentUser) {
+           const myDuty = nextEvent.duties?.find((d: any) => d.userId === currentUser.uid);
+           setUpcomingDuty(myDuty ? myDuty.role : null);
+           setDutyStatus(myDuty ? myDuty.status : null);
+        }
       } else {
+        setUpcomingEvent(null);
         setUpcomingDuty(null);
+        setDutyStatus(null);
       }
     });
     return () => unsubscribe();
   }, [currentUser]);
+
+  const handleRsvp = async (status: string) => {
+    if (!upcomingEvent || !currentUser) return;
+    
+    const updatedDuties = upcomingEvent.duties.map((d: any) => {
+      if (d.userId === currentUser.uid) {
+        return { ...d, status };
+      }
+      return d;
+    });
+
+    try {
+      await runTransaction(db, async (transaction) => {
+        const docRef = doc(db, 'schedules', upcomingEvent.id);
+        transaction.update(docRef, { duties: updatedDuties });
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const handlePray = async (id: string) => {
     if (!currentUser) return;
@@ -116,7 +129,7 @@ export default function HomeScreen() {
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Ministerial Duty */}
-        {upcomingDuty && upcomingDutyDate && (
+        {upcomingEvent && upcomingDuty && (
           <View style={styles.dutyCard}>
             <View style={styles.dutyHeader}>
               <View style={styles.dutyHeaderLeft}>
@@ -125,34 +138,70 @@ export default function HomeScreen() {
               </View>
               <View style={styles.dutyDateBadge}>
                 <Text style={styles.dutyDateText}>
-                  {new Date(`${upcomingDutyDate}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  {new Date(`${upcomingEvent.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </Text>
               </View>
             </View>
             <Text style={styles.dutyText}>
               Thank you for your dedicated ministry, {displayName}. You are scheduled for 
               <Text style={styles.dutyHighlight}> {upcomingDuty} </Text>
-              this Sunday.
+              on {upcomingEvent.event || 'this Sunday'}.
             </Text>
+
+            <View style={styles.rsvpRow}>
+              <TouchableOpacity style={[styles.rsvpBtn, dutyStatus === 'going' && styles.rsvpGoing]} onPress={() => handleRsvp('going')}>
+                <CheckCircle2 size={16} color={dutyStatus === 'going' ? '#fff' : '#4ADE80'} />
+                <Text style={[styles.rsvpText, dutyStatus === 'going' && styles.rsvpTextActive]}>Going</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.rsvpBtn, dutyStatus === 'maybe' && styles.rsvpMaybe]} onPress={() => handleRsvp('maybe')}>
+                <HelpCircle size={16} color={dutyStatus === 'maybe' ? '#fff' : '#F59E0B'} />
+                <Text style={[styles.rsvpText, dutyStatus === 'maybe' && styles.rsvpTextActive]}>Maybe</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.rsvpBtn, dutyStatus === 'not_going' && styles.rsvpNotGoing]} onPress={() => handleRsvp('not_going')}>
+                <XCircle size={16} color={dutyStatus === 'not_going' ? '#fff' : '#EF4444'} />
+                <Text style={[styles.rsvpText, dutyStatus === 'not_going' && styles.rsvpTextActive]}>Not Going</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
 
         {/* Hero Card */}
-        <TouchableOpacity activeOpacity={0.9}>
-          <LinearGradient
-            colors={['#FF6596', '#B66DFF']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.heroCard}
-          >
-            <View style={styles.liveBadge}>
-              <Text style={styles.liveText}>LIVE SERVICE</Text>
-              <Crown size={12} color="#fff" />
-            </View>
-            <Text style={styles.heroTitle}>Sunday 9:00 AM{'\n'}Worship & Sermon</Text>
-            <Text style={styles.heroSub}>{isStaff ? 'Tap to view live attendance and check-ins right now!' : 'Join us for worship'}</Text>
-          </LinearGradient>
-        </TouchableOpacity>
+        {upcomingEvent ? (
+          <TouchableOpacity activeOpacity={0.9}>
+            <LinearGradient
+              colors={['#FF6596', '#B66DFF']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.heroCard}
+            >
+              <View style={styles.liveBadge}>
+                <Text style={styles.liveText}>UPCOMING</Text>
+                <Crown size={12} color="#fff" />
+              </View>
+              <Text style={styles.heroTitle}>
+                {new Date(`${upcomingEvent.date}T00:00:00`).toLocaleDateString('en-US', { weekday: 'long' })} {upcomingEvent.time}{'\n'}
+                {upcomingEvent.event}
+              </Text>
+              <Text style={styles.heroSub}>{isStaff ? 'Tap to view attendance and check-ins' : 'Join us for worship'}</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity activeOpacity={0.9}>
+            <LinearGradient
+              colors={['#FF6596', '#B66DFF']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.heroCard}
+            >
+              <View style={styles.liveBadge}>
+                <Text style={styles.liveText}>LIVE SERVICE</Text>
+                <Crown size={12} color="#fff" />
+              </View>
+              <Text style={styles.heroTitle}>Sunday 9:00 AM{'\n'}Worship & Sermon</Text>
+              <Text style={styles.heroSub}>{isStaff ? 'Tap to view live attendance and check-ins right now!' : 'Join us for worship'}</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
 
         {/* Action Grid */}
         <View style={styles.grid}>
@@ -230,8 +279,15 @@ const styles = StyleSheet.create({
   dutyTitle: { fontSize: 14, fontWeight: '800', color: '#1a1a1a' },
   dutyDateBadge: { backgroundColor: '#FFE8F0', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   dutyDateText: { fontSize: 11, fontWeight: '800', color: '#FF6596' },
-  dutyText: { fontSize: 13, color: '#666', lineHeight: 20 },
+  dutyText: { fontSize: 13, color: '#666', lineHeight: 20, marginBottom: 12 },
   dutyHighlight: { color: '#FF6596', fontWeight: 'bold' },
+  rsvpRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  rsvpBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f0f0f0', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, gap: 4 },
+  rsvpText: { fontSize: 12, fontWeight: '700', color: '#666' },
+  rsvpGoing: { backgroundColor: '#4ADE80' },
+  rsvpMaybe: { backgroundColor: '#F59E0B' },
+  rsvpNotGoing: { backgroundColor: '#EF4444' },
+  rsvpTextActive: { color: '#fff' },
   heroCard: { padding: 24, borderRadius: 24, marginBottom: 24, overflow: 'hidden' },
   liveBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.2)', alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, marginBottom: 16, gap: 4 },
   liveText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
