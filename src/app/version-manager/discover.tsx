@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, TextInput, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, ChevronRight, Search, Globe, CheckCircle2 } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Search, Globe, Cloud } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useVersionContext } from './_context';
 import { styles } from './_styles';
@@ -112,7 +112,7 @@ export default function DiscoverVersionsScreen() {
                     
                     <View style={{ marginLeft: 12 }}>
                       {downloadedIds.includes(String(bible.id)) ? (
-                        <CheckCircle2 size={22} color="#4ADE80" />
+                        <Cloud size={22} color="#ccc" />
                       ) : (
                         <ChevronRight size={20} color="#ccc" />
                       )}
