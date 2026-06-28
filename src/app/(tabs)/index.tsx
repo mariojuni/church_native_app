@@ -37,17 +37,44 @@ export default function HomeScreen() {
   }, []);
 
   useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const q = query(collection(db, 'schedules'), where('date', '>=', today), orderBy('date', 'asc'), limit(1));
+    if (!currentUser) return;
+    const q = collection(db, 'schedules');
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (!snapshot.empty) {
-        const nextEvent = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as any;
+      const today = new Date().toISOString().split('T')[0];
+      
+      const allSchedules = snapshot.docs.map(docSnap => {
+        const data = docSnap.data();
+        return {
+          id: docSnap.id,
+          ...data,
+          date: data.date || docSnap.id // Fallback to doc ID for old format
+        } as any;
+      });
+
+      const upcoming = allSchedules
+        .filter(s => s.date >= today)
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+      if (upcoming.length > 0) {
+        const nextEvent = upcoming[0];
         setUpcomingEvent(nextEvent);
 
-        if (currentUser) {
-           const myDuty = nextEvent.duties?.find((d: any) => d.userId === currentUser.uid);
-           setUpcomingDuty(myDuty ? myDuty.role : null);
-           setDutyStatus(myDuty ? myDuty.status : null);
+        // Check new format (duties array)
+        if (nextEvent.duties && Array.isArray(nextEvent.duties)) {
+          const myDuty = nextEvent.duties.find((d: any) => d.userId === currentUser.uid);
+          setUpcomingDuty(myDuty ? myDuty.role : null);
+          setDutyStatus(myDuty ? myDuty.status : null);
+        } else {
+          // Check old format
+          let duties = [];
+          if (nextEvent.openingPrayer === currentUser.uid) duties.push('Opening Prayer');
+          if (nextEvent.tithesOfferingPrayer === currentUser.uid) duties.push('Tithes & Offering Prayer');
+          if (nextEvent.scriptureReading === currentUser.uid) duties.push('Scripture Reading');
+          if (nextEvent.praiseWorship === currentUser.uid) duties.push('Praise & Worship');
+          if (nextEvent.ushers && nextEvent.ushers.includes(currentUser.uid)) duties.push('Usher');
+          
+          setUpcomingDuty(duties.length > 0 ? duties.join(', ') : null);
+          setDutyStatus(null); // Old format doesn't have status
         }
       } else {
         setUpcomingEvent(null);
@@ -59,7 +86,10 @@ export default function HomeScreen() {
   }, [currentUser]);
 
   const handleRsvp = async (status: string) => {
-    if (!upcomingEvent || !currentUser) return;
+    if (!upcomingEvent || !currentUser || !upcomingEvent.duties) {
+      alert("RSVP is only available for newer schedules created via the Staff tab.");
+      return;
+    }
     
     const updatedDuties = upcomingEvent.duties.map((d: any) => {
       if (d.userId === currentUser.uid) {
