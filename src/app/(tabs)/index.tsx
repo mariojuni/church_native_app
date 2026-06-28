@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, Crown, Users, Calendar, HeartHandshake, HandHeart, Grid, BarChart3, BookOpen, ChevronRight, Quote, CheckCircle2, HelpCircle, XCircle } from 'lucide-react-native';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -16,9 +16,11 @@ export default function HomeScreen() {
   const router = useRouter();
 
   const [latestPrayer, setLatestPrayer] = useState<any>(null);
-  const [upcomingEvent, setUpcomingEvent] = useState<any>(null);
-  const [upcomingDuty, setUpcomingDuty] = useState<string | null>(null);
-  const [dutyStatus, setDutyStatus] = useState<string | null>(null);
+  const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
+  const [activeSlide, setActiveSlide] = useState(0);
+  
+  const screenWidth = Dimensions.get('window').width;
+  const cardWidth = screenWidth - 48;
 
   const displayName = userProfile?.name 
     ? userProfile.name.split(' ')[0] 
@@ -56,42 +58,24 @@ export default function HomeScreen() {
         .sort((a, b) => a.date.localeCompare(b.date));
 
       if (upcoming.length > 0) {
-        const nextEvent = upcoming[0];
-        setUpcomingEvent(nextEvent);
-
-        // Check new format (duties array)
-        if (nextEvent.duties && Array.isArray(nextEvent.duties)) {
-          const myDuty = nextEvent.duties.find((d: any) => d.userId === currentUser.uid);
-          setUpcomingDuty(myDuty ? myDuty.role : null);
-          setDutyStatus(myDuty ? myDuty.status : null);
-        } else {
-          // Check old format
-          let duties = [];
-          if (nextEvent.openingPrayer === currentUser.uid) duties.push('Opening Prayer');
-          if (nextEvent.tithesOfferingPrayer === currentUser.uid) duties.push('Tithes & Offering Prayer');
-          if (nextEvent.scriptureReading === currentUser.uid) duties.push('Scripture Reading');
-          if (nextEvent.praiseWorship === currentUser.uid) duties.push('Praise & Worship');
-          if (nextEvent.ushers && nextEvent.ushers.includes(currentUser.uid)) duties.push('Usher');
-          
-          setUpcomingDuty(duties.length > 0 ? duties.join(', ') : null);
-          setDutyStatus(null); // Old format doesn't have status
-        }
+        const nextDate = upcoming[0].date;
+        const eventsForNextDate = upcoming.filter(s => s.date === nextDate);
+        setUpcomingEvents(eventsForNextDate);
       } else {
-        setUpcomingEvent(null);
-        setUpcomingDuty(null);
-        setDutyStatus(null);
+        setUpcomingEvents([]);
       }
     });
     return () => unsubscribe();
   }, [currentUser]);
 
-  const handleRsvp = async (status: string) => {
-    if (!upcomingEvent || !currentUser || !upcomingEvent.duties) {
+  const handleRsvp = async (eventId: string, status: string) => {
+    const targetEvent = upcomingEvents.find(e => e.id === eventId);
+    if (!targetEvent || !currentUser || !targetEvent.duties) {
       alert("RSVP is only available for newer schedules created via the Staff tab.");
       return;
     }
     
-    const updatedDuties = upcomingEvent.duties.map((d: any) => {
+    const updatedDuties = targetEvent.duties.map((d: any) => {
       if (d.userId === currentUser.uid) {
         return { ...d, status };
       }
@@ -100,7 +84,7 @@ export default function HomeScreen() {
 
     try {
       await runTransaction(db, async (transaction) => {
-        const docRef = doc(db, 'schedules', upcomingEvent.id);
+        const docRef = doc(db, 'schedules', eventId);
         transaction.update(docRef, { duties: updatedDuties });
       });
     } catch (e) {
@@ -158,71 +142,127 @@ export default function HomeScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Ministerial Duty */}
-        {upcomingEvent && upcomingDuty && (
-          <View style={styles.dutyCard}>
-            <View style={styles.dutyHeader}>
-              <View style={styles.dutyHeaderLeft}>
-                <Crown size={16} color="#FF6596" />
-                <Text style={styles.dutyTitle}>Ministerial Update</Text>
+        {/* Ministerial Duty */
+        upcomingEvents.map((event) => {
+          let dutyRole = null;
+          if (event.duties && Array.isArray(event.duties)) {
+            const myDuty = event.duties.find((d: any) => d.userId === currentUser?.uid);
+            if (myDuty) dutyRole = myDuty.role;
+          } else {
+            let duties = [];
+            if (event.openingPrayer === currentUser?.uid) duties.push('Opening Prayer');
+            if (event.tithesOfferingPrayer === currentUser?.uid) duties.push('Tithes & Offering Prayer');
+            if (event.scriptureReading === currentUser?.uid) duties.push('Scripture Reading');
+            if (event.praiseWorship === currentUser?.uid) duties.push('Praise & Worship');
+            if (event.ushers && event.ushers.includes(currentUser?.uid)) duties.push('Usher');
+            if (duties.length > 0) dutyRole = duties.join(', ');
+          }
+
+          if (!dutyRole) return null;
+
+          return (
+            <View key={`duty-${event.id}`} style={styles.dutyCard}>
+              <View style={styles.dutyHeader}>
+                <View style={styles.dutyHeaderLeft}>
+                  <Crown size={16} color="#FF6596" />
+                  <Text style={styles.dutyTitle}>Ministerial Update</Text>
+                </View>
+                <View style={styles.dutyDateBadge}>
+                  <Text style={styles.dutyDateText}>
+                    {new Date(`${event.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </Text>
+                </View>
               </View>
-              <View style={styles.dutyDateBadge}>
-                <Text style={styles.dutyDateText}>
-                  {new Date(`${upcomingEvent.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                </Text>
-              </View>
+              <Text style={styles.dutyText}>
+                Thank you for your dedicated ministry, {displayName}. You are scheduled for 
+                <Text style={styles.dutyHighlight}> {dutyRole} </Text>
+                on {event.event || 'this Sunday'}.
+              </Text>
             </View>
-            <Text style={styles.dutyText}>
-              Thank you for your dedicated ministry, {displayName}. You are scheduled for 
-              <Text style={styles.dutyHighlight}> {upcomingDuty} </Text>
-              on {upcomingEvent.event || 'this Sunday'}.
-            </Text>
-
-
-          </View>
-        )}
+          );
+        })}
 
         {/* Hero Card */}
-        {upcomingEvent ? (
-          <TouchableOpacity activeOpacity={0.9}>
-            <LinearGradient
-              colors={['#FF6596', '#B66DFF']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.heroCard}
+        {upcomingEvents.length > 0 ? (
+          <View>
+            <ScrollView 
+              horizontal 
+              pagingEnabled 
+              showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={(event) => {
+                const slide = Math.round(event.nativeEvent.contentOffset.x / cardWidth);
+                setActiveSlide(slide);
+              }}
+              style={styles.heroScroll}
             >
-              <View style={styles.liveBadge}>
-                <Text style={styles.liveText}>UPCOMING</Text>
-                <Crown size={12} color="#fff" />
+              {upcomingEvents.map((event) => {
+                let dutyRole = null;
+                let dutyStatus = null;
+                if (event.duties && Array.isArray(event.duties)) {
+                  const myDuty = event.duties.find((d: any) => d.userId === currentUser?.uid);
+                  if (myDuty) {
+                    dutyRole = myDuty.role;
+                    dutyStatus = myDuty.status;
+                  }
+                }
+
+                return (
+                  <View key={`hero-${event.id}`} style={{ width: cardWidth }}>
+                    <TouchableOpacity activeOpacity={0.9}>
+                      <LinearGradient
+                        colors={['#FF6596', '#B66DFF']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.heroCard}
+                      >
+                        <View style={styles.liveBadge}>
+                          <Text style={styles.liveText}>UPCOMING</Text>
+                          <Crown size={12} color="#fff" />
+                        </View>
+                        <Text style={styles.heroTitle}>
+                          {new Date(`${event.date}T00:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                        </Text>
+                        <Text style={styles.heroEventName}>{event.event || 'Sunday Worship Service'}</Text>
+                        <Text style={styles.heroEventDetails}>
+                          {event.time || '9:00 AM'} • {event.location || 'Main Sanctuary'}
+                        </Text>
+                        {dutyRole && (
+                          <View style={styles.heroRsvpRow}>
+                            <TouchableOpacity style={[styles.heroRsvpBtn, dutyStatus === 'going' && styles.rsvpGoing]} onPress={() => handleRsvp(event.id, 'going')}>
+                              <CheckCircle2 size={16} color="#fff" />
+                              <Text style={styles.heroRsvpText}>Going</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={[styles.heroRsvpBtn, dutyStatus === 'maybe' && styles.rsvpMaybe]} onPress={() => handleRsvp(event.id, 'maybe')}>
+                              <HelpCircle size={16} color="#fff" />
+                              <Text style={styles.heroRsvpText}>Maybe</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={[styles.heroRsvpBtn, dutyStatus === 'not_going' && styles.rsvpNotGoing]} onPress={() => handleRsvp(event.id, 'not_going')}>
+                              <XCircle size={16} color="#fff" />
+                              <Text style={styles.heroRsvpText}>Not Going</Text>
+                            </TouchableOpacity>
+                          </View>
+                        )}
+                        {!dutyRole && (
+                          <Text style={[styles.heroSub, { marginTop: 16 }]}>{isStaff ? 'Tap to view attendance and check-ins' : 'Join us for worship'}</Text>
+                        )}
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
+            </ScrollView>
+            
+            {upcomingEvents.length > 1 && (
+              <View style={styles.paginationRow}>
+                {upcomingEvents.map((_, index) => (
+                  <View 
+                    key={`dot-${index}`} 
+                    style={[styles.paginationDot, activeSlide === index && styles.paginationDotActive]} 
+                  />
+                ))}
               </View>
-              <Text style={styles.heroTitle}>
-                {new Date(`${upcomingEvent.date}T00:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
-              </Text>
-              <Text style={styles.heroEventName}>{upcomingEvent.event || 'Sunday Worship Service'}</Text>
-              <Text style={styles.heroEventDetails}>
-                {upcomingEvent.time || '9:00 AM'} • {upcomingEvent.location || 'Main Sanctuary'}
-              </Text>
-              {upcomingDuty && (
-                <View style={styles.heroRsvpRow}>
-                  <TouchableOpacity style={[styles.heroRsvpBtn, dutyStatus === 'going' && styles.rsvpGoing]} onPress={() => handleRsvp('going')}>
-                    <CheckCircle2 size={16} color="#fff" />
-                    <Text style={styles.heroRsvpText}>Going</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[styles.heroRsvpBtn, dutyStatus === 'maybe' && styles.rsvpMaybe]} onPress={() => handleRsvp('maybe')}>
-                    <HelpCircle size={16} color="#fff" />
-                    <Text style={styles.heroRsvpText}>Maybe</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[styles.heroRsvpBtn, dutyStatus === 'not_going' && styles.rsvpNotGoing]} onPress={() => handleRsvp('not_going')}>
-                    <XCircle size={16} color="#fff" />
-                    <Text style={styles.heroRsvpText}>Not Going</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-              {!upcomingDuty && (
-                <Text style={[styles.heroSub, { marginTop: 16 }]}>{isStaff ? 'Tap to view attendance and check-ins' : 'Join us for worship'}</Text>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
+            )}
+          </View>
         ) : (
           <TouchableOpacity activeOpacity={0.9}>
             <LinearGradient
@@ -326,7 +366,11 @@ const styles = StyleSheet.create({
   rsvpMaybe: { backgroundColor: '#F59E0B' },
   rsvpNotGoing: { backgroundColor: '#EF4444' },
   rsvpTextActive: { color: '#fff' },
-  heroCard: { padding: 24, borderRadius: 24, marginBottom: 24, overflow: 'hidden' },
+  heroCard: { padding: 24, borderRadius: 24, marginBottom: 0, overflow: 'hidden' },
+  heroScroll: { marginBottom: 16 },
+  paginationRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, marginBottom: 24 },
+  paginationDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#D1D5DB' },
+  paginationDotActive: { width: 20, backgroundColor: '#FF6596' },
   liveBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.2)', alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, marginBottom: 16, gap: 4 },
   liveText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
   heroTitle: { color: '#fff', fontSize: 32, fontWeight: 'bold', marginBottom: 4 },
