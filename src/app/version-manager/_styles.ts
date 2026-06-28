@@ -48,13 +48,13 @@ export const styles = StyleSheet.create({
   content: { flexShrink: 1, backgroundColor: '#fff' },
   emptyText: { textAlign: 'center', color: '#666', marginTop: 40 },
   discoverListContainer: {
-    paddingHorizontal: 16,
     paddingBottom: 24,
   },
   discoverListItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 16,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#f5f5f5',
   },

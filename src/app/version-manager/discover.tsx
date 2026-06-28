@@ -10,7 +10,7 @@ import { fetchBiblesByLanguage } from '../../utils/bibleApi';
 
 export default function DiscoverVersionsScreen() {
   const router = useRouter();
-  const { savedVersions, selectedLanguage } = useVersionContext();
+  const { savedVersions, selectedLanguage, publishers } = useVersionContext();
 
   const [bibles, setBibles] = useState<any[]>([]);
   const [biblesLoading, setBiblesLoading] = useState(false);
@@ -102,6 +102,9 @@ export default function DiscoverVersionsScreen() {
                     </View>
   
                     <View style={styles.versionInfo}>
+                      <Text style={styles.publisherText}>
+                        {publishers[bible.organization_id] || (bible.organization_id ? 'Loading...' : 'Public Domain')}
+                      </Text>
                       <Text style={styles.versionName}>
                         {bible.title || bible.localized_title}
                       </Text>

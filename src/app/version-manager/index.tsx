@@ -94,19 +94,22 @@ export default function MyVersionsScreen() {
               return (
                 <TouchableOpacity
                   key={version.id}
-                  style={styles.discoverListItem}
+                  style={[
+                    styles.discoverListItem,
+                    isActive && { backgroundColor: 'rgba(255, 101, 150, 0.08)', borderBottomWidth: 0 }
+                  ]}
                   onPress={() => {
                     handleSelectVersion(version.id);
                     router.back();
                   }}
                   activeOpacity={0.7}
                 >
-                  <View style={[styles.discoverAbbrBox, isActive && styles.abbrBoxActive]}>
+                  <View style={[styles.discoverAbbrBox, isActive && { backgroundColor: 'transparent' }]}>
                     <Text style={[styles.discoverAbbrText, isActive && styles.textActive]}>{abbr}</Text>
                   </View>
 
                   <View style={styles.versionInfo}>
-                    <Text style={styles.publisherText}>
+                    <Text style={[styles.publisherText, isActive && { color: '#FF6596' }]}>
                       {publishers[version.organization_id] || (version.organization_id ? 'Loading...' : 'Public Domain')}
                     </Text>
                     <Text style={[styles.versionName, isActive && styles.textActive]}>
