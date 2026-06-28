@@ -52,7 +52,11 @@ export default function AttendanceScreen() {
           {['Attendance', 'Schedule', 'Reports'].map((f) => (
             <TouchableOpacity 
               key={f} 
-              style={[styles.pill, activeTab === f.toLowerCase() && styles.pillActive]}
+              style={[
+                styles.pill, 
+                activeTab === f.toLowerCase() && styles.pillActive,
+                activeTab === f.toLowerCase() && styles.pillShadow
+              ]}
               onPress={() => setActiveTab(f.toLowerCase())}
             >
               <Text style={[styles.pillText, activeTab === f.toLowerCase() && styles.pillTextActive]}>{f}</Text>
@@ -121,13 +125,14 @@ export default function AttendanceScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFF5F8' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, paddingBottom: 16 },
-  title: { fontSize: 34, fontWeight: '900', color: '#1a1a1a' },
-  qrButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  title: { fontSize: 34, fontWeight: '900', color: '#1a1a1a', letterSpacing: -0.5 },
+  qrButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.8)', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)' },
   filterContainer: { paddingBottom: 16 },
-  filterScroll: { paddingHorizontal: 24, gap: 12 },
+  filterScroll: { paddingHorizontal: 24, gap: 16 },
   pill: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#fff', borderWidth: 1, borderColor: '#e1e4e8' },
-  pillActive: { backgroundColor: '#1a1a1a', borderColor: '#1a1a1a' },
-  pillText: { fontSize: 14, fontWeight: '600', color: '#666' },
+  pillActive: { backgroundColor: '#FF6596', borderColor: '#FF6596' },
+  pillShadow: { shadowColor: '#FF6596', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 4 },
+  pillText: { fontSize: 13, fontWeight: '600', color: '#666' },
   pillTextActive: { color: '#fff' },
   content: { paddingHorizontal: 24, paddingBottom: 100, gap: 16 },
   statsRow: { flexDirection: 'row', gap: 12, marginBottom: 16 },
