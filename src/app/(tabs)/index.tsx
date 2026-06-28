@@ -200,7 +200,7 @@ export default function HomeScreen() {
               </Text>
               <Text style={styles.heroEventName}>{upcomingEvent.event || 'Sunday Worship Service'}</Text>
               <Text style={styles.heroEventDetails}>
-                {upcomingEvent.time}{upcomingEvent.location ? ` • ${upcomingEvent.location}` : ''}
+                {upcomingEvent.time || '9:00 AM'} • {upcomingEvent.location || 'Main Sanctuary'}
               </Text>
               {upcomingDuty && (
                 <View style={styles.heroRsvpRow}>
