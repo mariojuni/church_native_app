@@ -4,10 +4,17 @@ import {
   signInWithEmailAndPassword, 
   signOut, 
   onAuthStateChanged,
-  User
+  User,
+  GoogleAuthProvider,
+  signInWithCredential
 } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+
+GoogleSignin.configure({
+  webClientId: '676505939287-eqsoa6bc8tkgkun3bmqtdmu2418hnu7m.apps.googleusercontent.com',
+});
 
 interface AuthState {
   currentUser: User | null;
@@ -16,7 +23,7 @@ interface AuthState {
   initialized: boolean;
   signup: (email: string, password: string) => Promise<any>;
   login: (email: string, password: string) => Promise<any>;
-  loginWithGoogle: () => Promise<void>;
+  loginWithGoogle: () => Promise<any>;
   logout: () => Promise<void>;
   initializeAuthListener: () => void;
 }
@@ -29,8 +36,21 @@ export const useAuthStore = create<AuthState>((set) => ({
   signup: (email, password) => createUserWithEmailAndPassword(auth, email, password),
   login: (email, password) => signInWithEmailAndPassword(auth, email, password),
   loginWithGoogle: async () => {
-    // Placeholder until Expo OAuth / Google Client IDs are provided
-    return Promise.resolve();
+    try {
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const response = await GoogleSignin.signIn();
+      const idToken = response.data?.idToken;
+      
+      if (!idToken) {
+        throw new Error('No ID token found from Google Sign-In');
+      }
+      
+      const googleCredential = GoogleAuthProvider.credential(idToken);
+      return signInWithCredential(auth, googleCredential);
+    } catch (error) {
+      console.error("Google Sign-In Error", error);
+      throw error;
+    }
   },
   logout: () => signOut(auth),
   initializeAuthListener: () => {

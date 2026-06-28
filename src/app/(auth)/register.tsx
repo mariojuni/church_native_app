@@ -43,7 +43,6 @@ export default function RegisterScreen() {
     setIsLoading(true);
     try {
       await loginWithGoogle();
-      Alert.alert('Google Sign-In', 'Google Sign-In is coming soon. Please ensure you have provided Client IDs to configure it fully.');
     } catch (error: any) {
       setErrorMsg(error.message);
     } finally {
