@@ -95,7 +95,7 @@ export default function MyVersionsScreen() {
                 <TouchableOpacity
                   key={version.id}
                   style={[
-                    styles.discoverListItem,
+                    styles.myVersionsListItem,
                     isActive && { backgroundColor: 'rgba(255, 101, 150, 0.08)', borderBottomWidth: 0 }
                   ]}
                   onPress={() => {
@@ -104,9 +104,9 @@ export default function MyVersionsScreen() {
                   }}
                   activeOpacity={0.7}
                 >
-                  <View style={[styles.discoverAbbrBox, isActive && { backgroundColor: 'transparent' }]}>
-                    <Text style={[styles.discoverAbbrText, isActive && styles.textActive]}>{abbr}</Text>
-                  </View>
+                    <View style={[styles.myVersionsAbbrBox, isActive && { backgroundColor: 'transparent' }]}>
+                      <Text style={[styles.discoverAbbrText, isActive && styles.textActive]}>{abbr}</Text>
+                    </View>
 
                   <View style={styles.versionInfo}>
                     <Text style={[styles.publisherText, isActive && { color: '#FF6596' }]}>
@@ -127,13 +127,12 @@ export default function MyVersionsScreen() {
           
           <View style={{ marginTop: 24, alignItems: 'center', paddingBottom: 32 }}>
             <TouchableOpacity 
-              style={{ backgroundColor: 'rgba(255,101,150,0.1)', paddingVertical: 14, paddingHorizontal: 24, borderRadius: 24, marginBottom: 12 }}
+              style={{ backgroundColor: 'rgba(255,101,150,0.1)', paddingVertical: 10, paddingHorizontal: 16, borderRadius: 20 }}
               onPress={() => router.push('/version-manager/discover')}
               activeOpacity={0.7}
             >
-              <Text style={{ color: '#FF6596', fontWeight: '700', fontSize: 16 }}>More Versions</Text>
+              <Text style={{ color: '#FF6596', fontWeight: '700', fontSize: 14 }}>More Versions</Text>
             </TouchableOpacity>
-            <Text style={{ color: '#999', fontSize: 12, textAlign: 'center' }}>3,809 Versions in 2,439 Languages</Text>
           </View>
         </View>
       </ScrollView>
