@@ -83,17 +83,20 @@ export default function HomeScreen() {
 
   const handleRsvp = async (eventId: string, status: string) => {
     const targetEvent = upcomingEvents.find(e => e.id === eventId);
-    if (!targetEvent || !currentUser || !targetEvent.duties) {
-      alert("RSVP is only available for newer schedules created via the Staff tab.");
-      return;
-    }
+    if (!targetEvent || !currentUser) return;
     
-    const updatedDuties = targetEvent.duties.map((d: any) => {
-      if (d.userId === currentUser.uid) {
-        return { ...d, status };
-      }
-      return d;
-    });
+    let updatedDuties = targetEvent.duties ? [...targetEvent.duties] : [];
+    const existingIndex = updatedDuties.findIndex((d: any) => d.userId === currentUser.uid);
+    
+    if (existingIndex >= 0) {
+      updatedDuties[existingIndex] = { ...updatedDuties[existingIndex], status };
+    } else {
+      updatedDuties.push({
+        userId: currentUser.uid,
+        role: 'Attendee',
+        status
+      });
+    }
 
     try {
       await runTransaction(db, async (transaction) => {
@@ -247,25 +250,20 @@ export default function HomeScreen() {
                         <Text style={styles.heroEventDetails}>
                           {event.time || '9:00 AM'} • {event.location || 'Main Sanctuary'}
                         </Text>
-                        {dutyRole && (
-                          <View style={styles.heroRsvpRow}>
-                            <TouchableOpacity style={[styles.heroRsvpBtn, dutyStatus === 'going' && styles.rsvpGoing]} onPress={() => handleRsvp(event.id, 'going')}>
-                              <CheckCircle2 size={16} color="#fff" />
-                              <Text style={styles.heroRsvpText}>Going</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={[styles.heroRsvpBtn, dutyStatus === 'maybe' && styles.rsvpMaybe]} onPress={() => handleRsvp(event.id, 'maybe')}>
-                              <HelpCircle size={16} color="#fff" />
-                              <Text style={styles.heroRsvpText}>Maybe</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={[styles.heroRsvpBtn, dutyStatus === 'not_going' && styles.rsvpNotGoing]} onPress={() => handleRsvp(event.id, 'not_going')}>
-                              <XCircle size={16} color="#fff" />
-                              <Text style={styles.heroRsvpText}>Not Going</Text>
-                            </TouchableOpacity>
-                          </View>
-                        )}
-                        {!dutyRole && (
-                          <Text style={[styles.heroSub, { marginTop: 16 }]}>{isStaff ? 'Tap to view attendance and check-ins' : 'Join us for worship'}</Text>
-                        )}
+                        <View style={styles.heroRsvpRow}>
+                          <TouchableOpacity style={[styles.heroRsvpBtn, dutyStatus === 'going' && styles.rsvpGoing]} onPress={() => handleRsvp(event.id, 'going')}>
+                            <CheckCircle2 size={16} color="#fff" />
+                            <Text style={styles.heroRsvpText}>Going</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity style={[styles.heroRsvpBtn, dutyStatus === 'maybe' && styles.rsvpMaybe]} onPress={() => handleRsvp(event.id, 'maybe')}>
+                            <HelpCircle size={16} color="#fff" />
+                            <Text style={styles.heroRsvpText}>Maybe</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity style={[styles.heroRsvpBtn, dutyStatus === 'not_going' && styles.rsvpNotGoing]} onPress={() => handleRsvp(event.id, 'not_going')}>
+                            <XCircle size={16} color="#fff" />
+                            <Text style={styles.heroRsvpText}>Not Going</Text>
+                          </TouchableOpacity>
+                        </View>
                       </LinearGradient>
                     </TouchableOpacity>
                   </View>
@@ -297,7 +295,6 @@ export default function HomeScreen() {
                 <Crown size={12} color="#fff" />
               </View>
               <Text style={styles.heroTitle}>Sunday 9:00 AM{'\n'}Worship & Sermon</Text>
-              <Text style={styles.heroSub}>{isStaff ? 'Tap to view live attendance and check-ins right now!' : 'Join us for worship'}</Text>
             </LinearGradient>
           </TouchableOpacity>
         )}
