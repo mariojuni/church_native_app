@@ -9,6 +9,7 @@ import {
 } from 'lucide-react-native';
 import { db } from '../../firebase';
 import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
+import AppModal from '../ui/AppModal';
 
 const getTodayStr = () => {
   const d = new Date();
@@ -248,177 +249,151 @@ export default function AttendanceTab({ members, showStaffFeatures }: Attendance
       </View>
 
       {/* Calendar Modal */}
-      <Modal visible={isCalendarOpen} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
-            <View style={styles.dragHandle} />
-            
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Date</Text>
-              <TouchableOpacity onPress={closeCalendar} style={styles.closeBtn}>
-                <X size={20} color="#1a1a1a" />
-              </TouchableOpacity>
-            </View>
+      <AppModal isOpen={isCalendarOpen} onClose={closeCalendar} title="Select Date">
+        <View style={{ paddingHorizontal: 24, paddingVertical: 16 }}>
+          <View style={styles.calendarMonthRow}>
+            <TouchableOpacity onPress={() => setCalendarViewDate(new Date(calendarViewDate.getFullYear(), calendarViewDate.getMonth() - 1, 1))} style={styles.calendarArrowBtn}>
+              <ChevronRight size={20} color="#1a1a1a" style={{ transform: [{ rotate: '180deg' }] }} />
+            </TouchableOpacity>
+            <Text style={styles.calendarMonthText}>
+              {monthNames[calendarViewDate.getMonth()]} {calendarViewDate.getFullYear()}
+            </Text>
+            <TouchableOpacity onPress={() => setCalendarViewDate(new Date(calendarViewDate.getFullYear(), calendarViewDate.getMonth() + 1, 1))} style={styles.calendarArrowBtn}>
+              <ChevronRight size={20} color="#1a1a1a" />
+            </TouchableOpacity>
+          </View>
 
-            <View style={styles.calendarMonthRow}>
-              <TouchableOpacity onPress={() => setCalendarViewDate(new Date(calendarViewDate.getFullYear(), calendarViewDate.getMonth() - 1, 1))} style={styles.calendarArrowBtn}>
-                <ChevronRight size={20} color="#1a1a1a" style={{ transform: [{ rotate: '180deg' }] }} />
-              </TouchableOpacity>
-              <Text style={styles.calendarMonthText}>
-                {monthNames[calendarViewDate.getMonth()]} {calendarViewDate.getFullYear()}
-              </Text>
-              <TouchableOpacity onPress={() => setCalendarViewDate(new Date(calendarViewDate.getFullYear(), calendarViewDate.getMonth() + 1, 1))} style={styles.calendarArrowBtn}>
-                <ChevronRight size={20} color="#1a1a1a" />
-              </TouchableOpacity>
-            </View>
+          <View style={styles.calendarDaysRow}>
+            {dayNames.map(d => (
+              <Text key={d} style={styles.calendarDayName}>{d}</Text>
+            ))}
+          </View>
 
-            <View style={styles.calendarDaysRow}>
-              {dayNames.map(d => (
-                <Text key={d} style={styles.calendarDayName}>{d}</Text>
-              ))}
-            </View>
-
-            <View style={styles.calendarGrid}>
-              {Array.from({ length: getFirstDayOfMonth(calendarViewDate.getFullYear(), calendarViewDate.getMonth()) }).map((_, i) => (
-                <View key={`empty-${i}`} style={styles.calendarCell} />
-              ))}
-              {Array.from({ length: getDaysInMonth(calendarViewDate.getFullYear(), calendarViewDate.getMonth()) }).map((_, i) => {
-                const d = i + 1;
-                const dateStr = formatLocal(new Date(calendarViewDate.getFullYear(), calendarViewDate.getMonth(), d));
-                const isSelected = filterDate === dateStr;
-                const isToday = dateStr === formatLocal(new Date());
-                
-                return (
-                  <TouchableOpacity 
-                    key={d} 
-                    onPress={() => { setFilterDate(dateStr); closeCalendar(); }}
-                    style={[
-                      styles.calendarCell,
-                      isSelected ? styles.calendarCellSelected : isToday ? styles.calendarCellToday : null
-                    ]}
-                  >
-                    <Text style={[
-                      styles.calendarCellText,
-                      isSelected ? styles.calendarCellTextSelected : isToday ? styles.calendarCellTextToday : null
-                    ]}>
-                      {d}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+          <View style={styles.calendarGrid}>
+            {Array.from({ length: getFirstDayOfMonth(calendarViewDate.getFullYear(), calendarViewDate.getMonth()) }).map((_, i) => (
+              <View key={`empty-${i}`} style={styles.calendarCell} />
+            ))}
+            {Array.from({ length: getDaysInMonth(calendarViewDate.getFullYear(), calendarViewDate.getMonth()) }).map((_, i) => {
+              const d = i + 1;
+              const dateStr = formatLocal(new Date(calendarViewDate.getFullYear(), calendarViewDate.getMonth(), d));
+              const isSelected = filterDate === dateStr;
+              const isToday = dateStr === formatLocal(new Date());
+              
+              return (
+                <TouchableOpacity 
+                  key={d} 
+                  onPress={() => { setFilterDate(dateStr); closeCalendar(); }}
+                  style={[
+                    styles.calendarCell,
+                    isSelected ? styles.calendarCellSelected : isToday ? styles.calendarCellToday : null
+                  ]}
+                >
+                  <Text style={[
+                    styles.calendarCellText,
+                    isSelected ? styles.calendarCellTextSelected : isToday ? styles.calendarCellTextToday : null
+                  ]}>
+                    {d}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
-      </Modal>
+      </AppModal>
 
       {/* Manual Check-in Modal */}
-      <Modal visible={isManualCheckinOpen} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
-            <View style={styles.dragHandle} />
-            
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Manual Check-in</Text>
-              <TouchableOpacity onPress={() => setIsManualCheckinOpen(false)} style={styles.closeBtn}>
-                <X size={20} color="#1a1a1a" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.searchWrapper}>
-              <Search size={20} color="#888" style={styles.searchIcon} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search member to check in..."
-                value={manualCheckinQuery}
-                onChangeText={setManualCheckinQuery}
-              />
-              {scanLoading && <ActivityIndicator size="small" color="#FF6596" style={styles.loadingSpinner} />}
-            </View>
-
-            {scanMessage ? (
-              <View style={[styles.toast, scanMessage.startsWith('⚠️') ? styles.toastWarn : styles.toastSuccess]}>
-                <CheckCircle size={18} color={scanMessage.startsWith('⚠️') ? '#92400E' : '#03543F'} />
-                <Text style={styles.toastText}>{scanMessage}</Text>
-              </View>
-            ) : null}
-
-            <ScrollView style={styles.modalScroll}>
-              {matchingUncheckedMembers.length > 0 ? (
-                matchingUncheckedMembers.map(m => (
-                  <View key={m.id} style={styles.modalListItem}>
-                    <View style={styles.modalListItemLeft}>
-                      <Image source={{ uri: m.avatar || 'https://i.pravatar.cc/150' }} style={styles.modalAvatar} />
-                      <View>
-                        <Text style={styles.modalMemberName}>{m.name}</Text>
-                        <Text style={styles.modalMemberRole}>{m.role}</Text>
-                      </View>
-                    </View>
-                    <TouchableOpacity 
-                      style={styles.addBtn}
-                      onPress={() => handleManualCheckin(m)}
-                      disabled={scanLoading}
-                    >
-                      <UserPlus size={14} color="#FF6596" />
-                      <Text style={styles.addBtnText}>Add</Text>
-                    </TouchableOpacity>
-                  </View>
-                ))
-              ) : (
-                <View style={styles.emptyContainer}>
-                  <Users size={32} color="#ccc" style={{ marginBottom: 12 }} />
-                  <Text style={styles.emptyText}>No members found</Text>
-                </View>
-              )}
-            </ScrollView>
+      <AppModal isOpen={isManualCheckinOpen} onClose={() => setIsManualCheckinOpen(false)} title="Manual Check-in">
+        <View style={{ paddingHorizontal: 24, paddingVertical: 16, flex: 1 }}>
+          <View style={styles.searchWrapper}>
+            <Search size={20} color="#888" style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search member to check in..."
+              value={manualCheckinQuery}
+              onChangeText={setManualCheckinQuery}
+            />
+            {scanLoading && <ActivityIndicator size="small" color="#FF6596" style={styles.loadingSpinner} />}
           </View>
+
+          {scanMessage ? (
+            <View style={[styles.toast, scanMessage.startsWith('⚠️') ? styles.toastWarn : styles.toastSuccess]}>
+              <CheckCircle size={18} color={scanMessage.startsWith('⚠️') ? '#92400E' : '#03543F'} />
+              <Text style={styles.toastText}>{scanMessage}</Text>
+            </View>
+          ) : null}
+
+          <ScrollView style={styles.modalScroll}>
+            {matchingUncheckedMembers.length > 0 ? (
+              matchingUncheckedMembers.map(m => (
+                <View key={m.id} style={styles.modalListItem}>
+                  <View style={styles.modalListItemLeft}>
+                    <Image source={{ uri: m.avatar || 'https://i.pravatar.cc/150' }} style={styles.modalAvatar} />
+                    <View>
+                      <Text style={styles.modalMemberName}>{m.name}</Text>
+                      <Text style={styles.modalMemberRole}>{m.role}</Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity 
+                    style={styles.addBtn}
+                    onPress={() => handleManualCheckin(m)}
+                    disabled={scanLoading}
+                  >
+                    <UserPlus size={14} color="#FF6596" />
+                    <Text style={styles.addBtnText}>Add</Text>
+                  </TouchableOpacity>
+                </View>
+              ))
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Users size={32} color="#ccc" style={{ marginBottom: 12 }} />
+                <Text style={styles.emptyText}>No members found</Text>
+              </View>
+            )}
+          </ScrollView>
         </View>
-      </Modal>
+      </AppModal>
 
       {/* Details Modal */}
-      <Modal visible={!!selectedCheckinMember} animationType="fade" transparent>
-        <View style={styles.modalOverlay}>
-          {selectedCheckinMember && (
-            <View style={[styles.modalSheet, { alignItems: 'center' }]}>
-              <View style={styles.dragHandle} />
-              
-              <Image 
-                source={{ uri: selectedCheckinMember.memberInfo?.avatar || 'https://i.pravatar.cc/150' }} 
-                style={styles.detailsAvatar} 
-              />
-              <Text style={styles.detailsName}>{selectedCheckinMember.name}</Text>
-              
-              <View style={[styles.roleBadge, selectedCheckinMember.status === 'new' ? styles.roleBadgeNew : null, { marginBottom: 16 }]}>
-                <Text style={[styles.roleText, selectedCheckinMember.status === 'new' ? styles.roleTextNew : null]}>
-                  {selectedCheckinMember.role || 'Member'}
-                </Text>
-              </View>
-
-              <View style={styles.timeInfoCard}>
-                <Clock size={16} color="#666" />
-                <Text style={styles.timeInfoText}>Checked in at</Text>
-                <Text style={styles.timeInfoValue}>{formatCheckinTime(selectedCheckinMember.timestamp)}</Text>
-              </View>
-
-              <View style={{ width: '100%', gap: 12 }}>
-                <TouchableOpacity 
-                  style={styles.secondaryBtn}
-                  onPress={() => setSelectedCheckinMember(null)}
-                >
-                  <Text style={styles.secondaryBtnText}>Close</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={styles.dangerBtn}
-                  onPress={() => handleDeleteCheckin(selectedCheckinMember.id)}
-                >
-                  <Trash2 size={18} color="#EF4444" />
-                  <Text style={styles.dangerBtnText}>Undo Check-in</Text>
-                </TouchableOpacity>
-              </View>
+      <AppModal isOpen={!!selectedCheckinMember} onClose={() => setSelectedCheckinMember(null)} title="Check-in Details">
+        {selectedCheckinMember && (
+          <View style={{ paddingHorizontal: 24, paddingVertical: 16, alignItems: 'center' }}>
+            <Image 
+              source={{ uri: selectedCheckinMember.memberInfo?.avatar || 'https://i.pravatar.cc/150' }} 
+              style={styles.detailsAvatar} 
+            />
+            <Text style={styles.detailsName}>{selectedCheckinMember.name}</Text>
+            
+            <View style={[styles.roleBadge, selectedCheckinMember.status === 'new' ? styles.roleBadgeNew : null, { marginBottom: 16 }]}>
+              <Text style={[styles.roleText, selectedCheckinMember.status === 'new' ? styles.roleTextNew : null]}>
+                {selectedCheckinMember.role || 'Member'}
+              </Text>
             </View>
-          )}
-        </View>
-      </Modal>
+
+            <View style={styles.timeInfoCard}>
+              <Clock size={16} color="#666" />
+              <Text style={styles.timeInfoText}>Checked in at</Text>
+              <Text style={styles.timeInfoValue}>{formatCheckinTime(selectedCheckinMember.timestamp)}</Text>
+            </View>
+
+            <View style={{ width: '100%', gap: 12 }}>
+              <TouchableOpacity 
+                style={styles.secondaryBtn}
+                onPress={() => setSelectedCheckinMember(null)}
+              >
+                <Text style={styles.secondaryBtnText}>Close</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.dangerBtn}
+                onPress={() => handleDeleteCheckin(selectedCheckinMember.id)}
+              >
+                <Trash2 size={18} color="#EF4444" />
+                <Text style={styles.dangerBtnText}>Undo Check-in</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+      </AppModal>
     </View>
   );
 }
