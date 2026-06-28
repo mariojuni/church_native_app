@@ -12,6 +12,8 @@ import '../global.css';
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [loaded] = useFonts({});
@@ -68,17 +70,19 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="scanner" options={{ presentation: 'modal', headerShown: false }} />
-        <Stack.Screen name="my-qr" options={{ presentation: 'modal', headerShown: false }} />
-        <Stack.Screen name="more" options={{ headerShown: false }} />
-        <Stack.Screen name="giving" options={{ headerShown: false }} />
-        <Stack.Screen name="version-manager" options={{ presentation: 'modal', headerShown: false }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
-    </ThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <Stack>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          <Stack.Screen name="scanner" options={{ presentation: 'modal', headerShown: false }} />
+          <Stack.Screen name="my-qr" options={{ presentation: 'modal', headerShown: false }} />
+          <Stack.Screen name="more" options={{ headerShown: false }} />
+          <Stack.Screen name="giving" options={{ headerShown: false }} />
+          <Stack.Screen name="version-manager" options={{ presentation: 'modal', headerShown: false }} />
+          <Stack.Screen name="+not-found" />
+        </Stack>
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }

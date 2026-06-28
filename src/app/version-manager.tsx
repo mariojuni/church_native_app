@@ -13,6 +13,7 @@ import {
   UIManager
 } from 'react-native';
 import { Check, Trash2, Plus, Settings, CloudDownload, ChevronLeft, ChevronRight, Search, Globe, CheckCircle, X } from 'lucide-react-native';
+import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { removeVersion, fetchOrganization, fetchBiblesByLanguage, downloadBibleOffline, saveVersion, getUserPreferences, saveUserPreferences, getSavedVersions } from '../utils/bibleApi';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -60,7 +61,6 @@ export default function VersionManagerScreen() {
     setStack(prev => prev.length > 1 ? prev.slice(0, -1) : prev);
   };
 
-  const [isEditMode, setIsEditMode] = useState(false);
   const [publishers, setPublishers] = useState<Record<string, string>>({});
 
   const [selectedLanguage, setSelectedLanguage] = useState(POPULAR_LANGUAGES[0]);
@@ -186,6 +186,14 @@ export default function VersionManagerScreen() {
     setDownloadingId(null);
   };
 
+  const renderRightActions = (id: string | number) => {
+    return (
+      <TouchableOpacity style={styles.swipeDeleteAction} onPress={() => handleRemove(id)}>
+        <Trash2 size={24} color="#fff" />
+      </TouchableOpacity>
+    );
+  };
+
   const renderMyVersions = () => (
     <ScrollView style={styles.content}>
       <View style={styles.discoverListContainer}>
@@ -197,38 +205,35 @@ export default function VersionManagerScreen() {
             const abbr = String(version.local_abbreviation || version.abbreviation || version.id || '').replace(/(\d{2,})$/, '\n$1');
             
             return (
-              <TouchableOpacity
+              <Swipeable 
                 key={version.id}
-                style={styles.discoverListItem}
-                onPress={() => !isEditMode && handleSelectVersion(version.id)}
-                disabled={isEditMode}
-                activeOpacity={0.7}
+                renderRightActions={() => renderRightActions(version.id)}
+                overshootRight={false}
               >
-                {isEditMode && (
-                  <TouchableOpacity onPress={() => handleRemove(version.id)} style={styles.deleteMinusIcon}>
-                    <View style={styles.minusLine} />
-                  </TouchableOpacity>
-                )}
-                
-                {!isEditMode && (
+                <TouchableOpacity
+                  style={styles.discoverListItem}
+                  onPress={() => handleSelectVersion(version.id)}
+                  onLongPress={() => handleRemove(version.id)}
+                  activeOpacity={0.7}
+                >
                   <View style={[styles.discoverAbbrBox, isActive && styles.abbrBoxActive]}>
                     <Text style={[styles.discoverAbbrText, isActive && styles.textActive]}>{abbr}</Text>
                   </View>
-                )}
 
-                <View style={styles.versionInfo}>
-                  <Text style={[styles.versionName, isActive && styles.textActive]}>
-                    {version.title || version.local_title}
-                  </Text>
-                  <Text style={styles.publisherText}>
-                    {publishers[version.organization_id] || (version.organization_id ? 'Loading...' : 'Public Domain')}
-                  </Text>
-                </View>
-                
-                {!isEditMode && isActive && (
-                  <Check size={20} color="#FF6596" style={{ marginLeft: 16 }} />
-                )}
-              </TouchableOpacity>
+                  <View style={styles.versionInfo}>
+                    <Text style={[styles.versionName, isActive && styles.textActive]}>
+                      {version.title || version.local_title}
+                    </Text>
+                    <Text style={styles.publisherText}>
+                      {publishers[version.organization_id] || (version.organization_id ? 'Loading...' : 'Public Domain')}
+                    </Text>
+                  </View>
+                  
+                  {isActive && (
+                    <Check size={20} color="#FF6596" style={{ marginLeft: 16 }} />
+                  )}
+                </TouchableOpacity>
+              </Swipeable>
             );
           })
         )}
@@ -236,7 +241,6 @@ export default function VersionManagerScreen() {
         <TouchableOpacity 
           style={styles.discoverInlineRow}
           onPress={() => push('DiscoverVersions')}
-          disabled={isEditMode}
           activeOpacity={0.7}
         >
           <View style={styles.discoverInlineIconBox}>
@@ -445,13 +449,13 @@ export default function VersionManagerScreen() {
   if (currentScreen === 'MyVersions') {
     headerTitle = "My Versions";
     headerLeft = (
-      <TouchableOpacity onPress={() => router.back()} style={{ padding: 8 }}>
-        <X size={24} color="#1a1a1a" />
+      <TouchableOpacity onPress={() => push('DiscoverVersions')} style={{ padding: 8 }}>
+        <Plus size={24} color="#1a1a1a" />
       </TouchableOpacity>
     );
     headerRight = (
-      <TouchableOpacity onPress={() => { animateLayout(); setIsEditMode(!isEditMode); }} style={{ padding: 8 }}>
-        <Text style={styles.editText}>{isEditMode ? 'Done' : 'Edit'}</Text>
+      <TouchableOpacity onPress={() => router.back()} style={{ padding: 8 }}>
+        <X size={24} color="#1a1a1a" />
       </TouchableOpacity>
     );
   } else if (currentScreen === 'DiscoverVersions') {
@@ -598,6 +602,13 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   textActive: { color: '#FF6596' },
+  swipeDeleteAction: {
+    backgroundColor: '#ff3b30',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
+    height: '100%',
+  },
   deleteMinusIcon: {
     width: 22,
     height: 22,
