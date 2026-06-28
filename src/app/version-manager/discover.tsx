@@ -41,9 +41,6 @@ export default function DiscoverVersionsScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
-      <View style={{ alignItems: 'center', paddingTop: 8 }}>
-        <View style={styles.dragHandle} />
-      </View>
       <View style={styles.modalHeader}>
         <View style={styles.headerLeftContainer}>
           <TouchableOpacity onPress={() => router.back()} style={{ padding: 8 }}>

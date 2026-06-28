@@ -70,9 +70,6 @@ export default function MyVersionsScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
-      <View style={{ alignItems: 'center', paddingTop: 8 }}>
-        <View style={styles.dragHandle} />
-      </View>
       <View style={[styles.modalHeader, styles.modalHeaderLeftAligned]}>
         <Text style={styles.modalTitleLeft}>My Versions</Text>
         <View style={[styles.headerRightContainer, { flexDirection: 'row', alignItems: 'center', gap: 12, marginRight: 8 }]}>
