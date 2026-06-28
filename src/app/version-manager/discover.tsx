@@ -112,7 +112,7 @@ export default function DiscoverVersionsScreen() {
                     
                     <View style={{ marginLeft: 12 }}>
                       {downloadedIds.includes(String(bible.id)) ? (
-                        <Cloud size={22} color="#ccc" fill="#ccc" />
+                        <Cloud size={22} color="#ccc" />
                       ) : (
                         <ChevronRight size={20} color="#ccc" />
                       )}
