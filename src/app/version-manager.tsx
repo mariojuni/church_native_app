@@ -10,10 +10,10 @@ import {
   TextInput,
   LayoutAnimation,
   Platform,
-  UIManager
+  UIManager,
+  ActionSheetIOS
 } from 'react-native';
-import { Check, Trash2, Plus, Settings, CloudDownload, ChevronLeft, ChevronRight, Search, Globe, CheckCircle, X } from 'lucide-react-native';
-import Swipeable from 'react-native-gesture-handler/Swipeable';
+import { Check, Trash2, Plus, Settings, CloudDownload, ChevronLeft, ChevronRight, Search, Globe, CheckCircle, X, MoreHorizontal } from 'lucide-react-native';
 import { removeVersion, fetchOrganization, fetchBiblesByLanguage, downloadBibleOffline, saveVersion, getUserPreferences, saveUserPreferences, getSavedVersions } from '../utils/bibleApi';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -169,6 +169,42 @@ export default function VersionManagerScreen() {
     );
   };
 
+  const handleOptions = (version: any) => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Share', 'More Info', 'Remove from list'],
+          destructiveButtonIndex: 3,
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) {
+            // Share (placeholder)
+          } else if (buttonIndex === 2) {
+            setSelectedBibleDetail(version);
+            push('VersionDetail');
+          } else if (buttonIndex === 3) {
+            handleRemove(version.id);
+          }
+        }
+      );
+    } else {
+      Alert.alert(
+        "Options",
+        version.title || version.local_title,
+        [
+          { text: "Share", onPress: () => {} },
+          { text: "More Info", onPress: () => {
+            setSelectedBibleDetail(version);
+            push('VersionDetail');
+          }},
+          { text: "Remove from list", onPress: () => handleRemove(version.id), style: "destructive" },
+          { text: "Cancel", style: "cancel" }
+        ]
+      );
+    }
+  };
+
   const handleDownload = async (bible: any) => {
     const isDownloaded = savedVersions.map(v => String(v.id)).includes(String(bible.id));
     if (isDownloaded) return;
@@ -186,71 +222,54 @@ export default function VersionManagerScreen() {
     setDownloadingId(null);
   };
 
-  const renderRightActions = (id: string | number) => {
-    return (
-      <TouchableOpacity style={styles.swipeDeleteAction} onPress={() => handleRemove(id)}>
-        <Trash2 size={24} color="#fff" />
-      </TouchableOpacity>
-    );
-  };
-
   const renderMyVersions = () => (
     <ScrollView style={styles.content}>
       <View style={styles.discoverListContainer}>
         {savedVersions.length === 0 ? (
-          <Text style={styles.emptyText}>No versions saved yet. Click + Discover to find translations.</Text>
+          <Text style={styles.emptyText}>No versions saved yet. Click + to find translations.</Text>
         ) : (
           savedVersions.map((version) => {
             const isActive = String(version.id) === String(activeTranslation);
             const abbr = String(version.local_abbreviation || version.abbreviation || version.id || '').replace(/(\d{2,})$/, '\n$1');
             
             return (
-              <Swipeable 
+              <TouchableOpacity
                 key={version.id}
-                renderRightActions={() => renderRightActions(version.id)}
-                overshootRight={false}
+                style={styles.discoverListItem}
+                onPress={() => handleSelectVersion(version.id)}
+                activeOpacity={0.7}
               >
-                <TouchableOpacity
-                  style={styles.discoverListItem}
-                  onPress={() => handleSelectVersion(version.id)}
-                  onLongPress={() => handleRemove(version.id)}
-                  activeOpacity={0.7}
-                >
-                  <View style={[styles.discoverAbbrBox, isActive && styles.abbrBoxActive]}>
-                    <Text style={[styles.discoverAbbrText, isActive && styles.textActive]}>{abbr}</Text>
-                  </View>
+                <View style={[styles.discoverAbbrBox, isActive && styles.abbrBoxActive]}>
+                  <Text style={[styles.discoverAbbrText, isActive && styles.textActive]}>{abbr}</Text>
+                </View>
 
-                  <View style={styles.versionInfo}>
-                    <Text style={[styles.versionName, isActive && styles.textActive]}>
-                      {version.title || version.local_title}
-                    </Text>
-                    <Text style={styles.publisherText}>
-                      {publishers[version.organization_id] || (version.organization_id ? 'Loading...' : 'Public Domain')}
-                    </Text>
-                  </View>
-                  
-                  {isActive && (
-                    <Check size={20} color="#FF6596" style={{ marginLeft: 16 }} />
-                  )}
+                <View style={styles.versionInfo}>
+                  <Text style={styles.publisherText}>
+                    {publishers[version.organization_id] || (version.organization_id ? 'Loading...' : 'Public Domain')}
+                  </Text>
+                  <Text style={[styles.versionName, isActive && styles.textActive]}>
+                    {version.title || version.local_title}
+                  </Text>
+                </View>
+                
+                <TouchableOpacity onPress={() => handleOptions(version)} style={{ padding: 8 }}>
+                  <MoreHorizontal size={24} color="#999" />
                 </TouchableOpacity>
-              </Swipeable>
+              </TouchableOpacity>
             );
           })
         )}
         
-        <TouchableOpacity 
-          style={styles.discoverInlineRow}
-          onPress={() => push('DiscoverVersions')}
-          activeOpacity={0.7}
-        >
-          <View style={styles.discoverInlineIconBox}>
-            <Plus size={20} color="#FF6596" />
-          </View>
-          <View style={styles.versionInfo}>
-            <Text style={styles.discoverInlineText}>Discover More Versions</Text>
-          </View>
-          <ChevronRight size={20} color="#ccc" />
-        </TouchableOpacity>
+        <View style={styles.footerContainer}>
+          <TouchableOpacity 
+            style={styles.moreVersionsBtn}
+            onPress={() => push('DiscoverVersions')}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.moreVersionsBtnText}>More Versions</Text>
+          </TouchableOpacity>
+          <Text style={styles.statsText}>3,809 Versions in 2,439 Languages</Text>
+        </View>
       </View>
     </ScrollView>
   );
@@ -443,20 +462,21 @@ export default function VersionManagerScreen() {
   };
 
   let headerTitle = "My Versions";
-  let headerLeft = null;
-  let headerRight = null;
+  let headerLeft: any = null;
+  let headerRight: any = null;
 
   if (currentScreen === 'MyVersions') {
     headerTitle = "My Versions";
-    headerLeft = (
-      <TouchableOpacity onPress={() => push('DiscoverVersions')} style={{ padding: 8 }}>
-        <Plus size={24} color="#1a1a1a" />
-      </TouchableOpacity>
-    );
+    headerLeft = null;
     headerRight = (
-      <TouchableOpacity onPress={() => router.back()} style={{ padding: 8 }}>
-        <X size={24} color="#1a1a1a" />
-      </TouchableOpacity>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginRight: 8 }}>
+        <TouchableOpacity style={{ padding: 8 }}>
+          <Settings size={24} color="#1a1a1a" />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => push('DiscoverVersions')} style={{ padding: 8 }}>
+          <Plus size={26} color="#1a1a1a" />
+        </TouchableOpacity>
+      </View>
     );
   } else if (currentScreen === 'DiscoverVersions') {
     headerTitle = "Discover Versions";
@@ -484,11 +504,16 @@ export default function VersionManagerScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.modalHeader}>
-        <View style={styles.headerLeftContainer}>
-          {headerLeft}
-        </View>
-        <Text style={styles.modalTitle}>{headerTitle}</Text>
+      <View style={{ alignItems: 'center', paddingTop: 8 }}>
+        <View style={styles.dragHandle} />
+      </View>
+      <View style={[styles.modalHeader, currentScreen === 'MyVersions' && styles.modalHeaderLeftAligned]}>
+        {currentScreen !== 'MyVersions' && (
+          <View style={styles.headerLeftContainer}>
+            {headerLeft}
+          </View>
+        )}
+        <Text style={[styles.modalTitle, currentScreen === 'MyVersions' && styles.modalTitleLeft]}>{headerTitle}</Text>
         <View style={styles.headerRightContainer}>
           {headerRight}
         </View>
@@ -503,14 +528,25 @@ export default function VersionManagerScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
+  dragHandle: {
+    width: 40,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#e0e0e0',
+    marginBottom: 4,
+  },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
+  },
+  modalHeaderLeftAligned: {
+    justifyContent: 'flex-start',
+    paddingBottom: 16,
   },
   headerLeftContainer: {
     minWidth: 60,
@@ -526,6 +562,13 @@ const styles = StyleSheet.create({
     color: '#1a1a1a',
     flex: 1,
     textAlign: 'center'
+  },
+  modalTitleLeft: {
+    textAlign: 'left',
+    fontSize: 32,
+    fontWeight: '800',
+    marginLeft: 8,
+    flex: 1,
   },
   content: { flexShrink: 1, backgroundColor: '#fff' },
   listContainer: { padding: 16, gap: 12 },
@@ -546,124 +589,22 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 13
   },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 0,
-  },
-  cardInactive: {
-    backgroundColor: '#f8f9fa',
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  cardActive: {
-    backgroundColor: '#fff',
-    borderColor: '#FF6596',
-    borderWidth: 1.5,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
-  },
-  abbrBox: {
-    width: 48,
-    height: 48,
-    backgroundColor: 'rgba(0,0,0,0.04)',
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 14,
-    padding: 4,
-  },
   abbrBoxActive: {
     backgroundColor: 'rgba(255, 101, 150, 0.1)',
   },
-  abbrText: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
-    textAlign: 'center',
-  },
   versionInfo: { flex: 1 },
   publisherText: {
-    fontSize: 10,
-    color: '#666',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 4,
+    fontSize: 11,
+    color: '#999',
+    marginBottom: 2,
   },
   versionName: { 
-    fontSize: 15, 
+    fontSize: 16, 
     fontWeight: '600', 
     color: '#1a1a1a',
-    lineHeight: 20,
+    lineHeight: 22,
   },
   textActive: { color: '#FF6596' },
-  swipeDeleteAction: {
-    backgroundColor: '#ff3b30',
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 80,
-    height: '100%',
-  },
-  deleteMinusIcon: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: '#ff3b30',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-  minusLine: {
-    width: 12,
-    height: 2,
-    backgroundColor: '#fff',
-    borderRadius: 1,
-  },
-  discoverPill: {
-    backgroundColor: 'rgba(255,101,150,0.1)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  discoverPillText: {
-    color: '#FF6596',
-    fontWeight: '600',
-    fontSize: 13
-  },
-  editText: {
-    color: '#FF6596',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  discoverInlineRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  discoverInlineIconBox: {
-    width: 48,
-    height: 48,
-    backgroundColor: 'rgba(255,101,150,0.05)',
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 14,
-  },
-  discoverInlineText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1a1a1a',
-  },
-  downloadingText: {
-    color: '#FF6596',
-    fontSize: 12,
-    fontWeight: '600',
-  },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -728,23 +669,45 @@ const styles = StyleSheet.create({
   discoverListItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#f5f5f5',
   },
   discoverAbbrBox: {
-    width: 48,
-    height: 48,
+    width: 52,
+    height: 52,
     backgroundColor: 'rgba(0,0,0,0.03)',
-    borderRadius: 8,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14,
+    marginRight: 16,
   },
   discoverAbbrText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: 'bold',
     color: '#1a1a1a',
+    textAlign: 'center',
+  },
+  footerContainer: {
+    marginTop: 24,
+    alignItems: 'center',
+    paddingBottom: 32,
+  },
+  moreVersionsBtn: {
+    backgroundColor: 'rgba(255,101,150,0.1)',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 24,
+    marginBottom: 12,
+  },
+  moreVersionsBtnText: {
+    color: '#FF6596',
+    fontWeight: '700',
+    fontSize: 16,
+  },
+  statsText: {
+    color: '#999',
+    fontSize: 12,
     textAlign: 'center',
   },
   detailHeader: {
