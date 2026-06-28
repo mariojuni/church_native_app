@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, CloudDownload, CheckCircle } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useVersionContext } from './_context';
@@ -36,7 +37,10 @@ export default function VersionDetailScreen() {
   };
 
   return (
-    <View style={{ flex: 1, justifyContent: 'space-between' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#fff', justifyContent: 'space-between' }}>
+      <View style={{ alignItems: 'center', paddingTop: 8 }}>
+        <View style={styles.dragHandle} />
+      </View>
       <View style={styles.modalHeader}>
         <View style={styles.headerLeftContainer}>
           <TouchableOpacity onPress={() => router.back()} style={{ padding: 8 }}>
@@ -85,6 +89,6 @@ export default function VersionDetailScreen() {
           </Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }

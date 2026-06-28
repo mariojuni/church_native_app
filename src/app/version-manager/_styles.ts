@@ -2,6 +2,13 @@
 import { StyleSheet } from 'react-native';
 
 export const styles = StyleSheet.create({
+  dragHandle: {
+    width: 40,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#e0e0e0',
+    marginBottom: 4,
+  },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Alert, ActionSheetIOS, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Plus, Settings, MoreHorizontal } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useVersionContext } from './_context';
@@ -68,7 +69,10 @@ export default function MyVersionsScreen() {
   };
 
   return (
-    <View style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
+      <View style={{ alignItems: 'center', paddingTop: 8 }}>
+        <View style={styles.dragHandle} />
+      </View>
       <View style={[styles.modalHeader, styles.modalHeaderLeftAligned]}>
         <Text style={styles.modalTitleLeft}>My Versions</Text>
         <View style={[styles.headerRightContainer, { flexDirection: 'row', alignItems: 'center', gap: 12, marginRight: 8 }]}>
@@ -133,6 +137,6 @@ export default function MyVersionsScreen() {
           </View>
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
