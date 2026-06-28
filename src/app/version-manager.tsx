@@ -12,9 +12,10 @@ import {
   Platform,
   UIManager
 } from 'react-native';
-import { Check, Trash2, Plus, Settings, CloudDownload, ChevronLeft, ChevronRight, Search, Globe, CheckCircle } from 'lucide-react-native';
-import { removeVersion, fetchOrganization, fetchBiblesByLanguage, downloadBibleOffline, saveVersion } from '../../utils/bibleApi';
-import AppModal from '../ui/AppModal';
+import { Check, Trash2, Plus, Settings, CloudDownload, ChevronLeft, ChevronRight, Search, Globe, CheckCircle, X } from 'lucide-react-native';
+import { removeVersion, fetchOrganization, fetchBiblesByLanguage, downloadBibleOffline, saveVersion, getUserPreferences, saveUserPreferences, getSavedVersions } from '../utils/bibleApi';
+import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -36,23 +37,12 @@ const POPULAR_LANGUAGES = [
 
 type Screen = 'MyVersions' | 'DiscoverVersions' | 'LanguageSelect' | 'VersionDetail';
 
-interface VersionManagerProps {
-  isOpen: boolean;
-  onClose: () => void;
-  savedVersions: any[];
-  activeTranslation: string | number;
-  refreshSavedVersions: () => void;
-  onSelectVersion: (id: string | number) => void;
-}
+export default function VersionManagerScreen() {
+  const router = useRouter();
 
-export default function VersionManager({
-  isOpen,
-  onClose,
-  savedVersions,
-  activeTranslation,
-  refreshSavedVersions,
-  onSelectVersion
-}: VersionManagerProps) {
+  const [savedVersions, setSavedVersions] = useState<any[]>([]);
+  const [activeTranslation, setActiveTranslation] = useState<string | number>('');
+
   const [stack, setStack] = useState<Screen[]>(['MyVersions']);
   const currentScreen = stack[stack.length - 1];
 
@@ -83,15 +73,19 @@ export default function VersionManager({
 
   const [selectedBibleDetail, setSelectedBibleDetail] = useState<any>(null);
 
+  const refreshSavedVersions = async () => {
+    const versions = await getSavedVersions();
+    setSavedVersions(versions);
+  };
+
   useEffect(() => {
-    if (!isOpen) {
-      setStack(['MyVersions']);
-      setIsEditMode(false);
-      setSearch('');
-      setSelectedBibleDetail(null);
-      setFilteredLanguages(POPULAR_LANGUAGES);
-    }
-  }, [isOpen]);
+    const init = async () => {
+      const prefs = await getUserPreferences();
+      setActiveTranslation(prefs?.activeTranslation || '');
+      await refreshSavedVersions();
+    };
+    init();
+  }, []);
 
   useEffect(() => {
     const fetchPublishers = async () => {
@@ -109,16 +103,15 @@ export default function VersionManager({
       setPublishers(newPublishers);
     };
 
-    if (isOpen) {
-      fetchPublishers();
-    }
-  }, [isOpen, savedVersions]);
+    fetchPublishers();
+  }, [savedVersions]);
 
   useEffect(() => {
     if (selectedLanguage) {
       const loadBibles = async () => {
         setBiblesLoading(true);
         const fetchedBibles = await fetchBiblesByLanguage(selectedLanguage.tag);
+        animateLayout();
         setBibles(fetchedBibles);
         setBiblesLoading(false);
       };
@@ -126,8 +119,16 @@ export default function VersionManager({
     }
   }, [selectedLanguage]);
 
+  const handleSelectVersion = async (id: string | number) => {
+    const prefs = await getUserPreferences();
+    await saveUserPreferences({ ...prefs, activeTranslation: id });
+    setActiveTranslation(id);
+    router.back();
+  };
+
   const handleSearch = (text: string) => {
     setSearch(text);
+    animateLayout();
     if (!text) {
       setFilteredLanguages(POPULAR_LANGUAGES);
       return;
@@ -154,11 +155,12 @@ export default function VersionManager({
           text: "Remove", 
           style: "destructive",
           onPress: async () => {
+            animateLayout();
             await removeVersion(id);
-            refreshSavedVersions();
+            await refreshSavedVersions();
             if (String(activeTranslation) === String(id) && savedVersions.length > 1) {
                const remaining = savedVersions.filter(v => String(v.id) !== String(id));
-               onSelectVersion(remaining[0].id);
+               handleSelectVersion(remaining[0].id);
             }
           }
         }
@@ -174,7 +176,7 @@ export default function VersionManager({
     const success = await downloadBibleOffline(bible.id);
     if (success) {
       await saveVersion(bible);
-      refreshSavedVersions();
+      await refreshSavedVersions();
       Alert.alert("Success", "Bible downloaded successfully!");
       if (currentScreen === 'VersionDetail') pop();
     } else {
@@ -197,7 +199,7 @@ export default function VersionManager({
               <TouchableOpacity
                 key={version.id}
                 style={[styles.card, isActive ? styles.cardActive : styles.cardInactive]}
-                onPress={() => !isEditMode && onSelectVersion(version.id)}
+                onPress={() => !isEditMode && handleSelectVersion(version.id)}
                 disabled={isEditMode}
                 activeOpacity={0.7}
               >
@@ -208,8 +210,8 @@ export default function VersionManager({
                 )}
                 
                 {!isEditMode && (
-                  <View style={styles.abbrBox}>
-                    <Text style={styles.abbrText}>{abbr}</Text>
+                  <View style={[styles.abbrBox, isActive && styles.abbrBoxActive]}>
+                    <Text style={[styles.abbrText, isActive && styles.textActive]}>{abbr}</Text>
                   </View>
                 )}
 
@@ -236,7 +238,9 @@ export default function VersionManager({
   const renderDiscoverVersions = () => (
     <View style={{ flexShrink: 1 }}>
       {biblesLoading ? (
-        <ActivityIndicator size="large" color="#FF6596" style={{ marginTop: 40 }} />
+        <View style={styles.loadingWrapper}>
+          <ActivityIndicator size="large" color="#FF6596" />
+        </View>
       ) : (
         <ScrollView style={styles.content}>
           <View style={styles.listContainer}>
@@ -251,12 +255,13 @@ export default function VersionManager({
                 return (
                   <TouchableOpacity
                     key={bible.id}
-                    style={[styles.card, isDownloading && { opacity: 0.6 }]}
+                    style={[styles.card, styles.cardInactive, isDownloading && { opacity: 0.6 }]}
                     onPress={() => {
                       setSelectedBibleDetail(bible);
                       push('VersionDetail');
                     }}
                     disabled={isDownloading}
+                    activeOpacity={0.7}
                   >
                     <View style={styles.abbrBox}>
                       <Text style={styles.abbrText}>{abbr}</Text>
@@ -300,28 +305,36 @@ export default function VersionManager({
           value={search}
           onChangeText={handleSearch}
           placeholderTextColor="#999"
+          autoCapitalize="none"
         />
       </View>
       <ScrollView style={styles.content}>
-        <View style={styles.listContainer}>
-          {filteredLanguages.map(lang => (
-            <TouchableOpacity key={lang.id} style={styles.langItem} onPress={() => handleSelectLanguage(lang)}>
-              <View>
-                <Text style={styles.langName}>{lang.name}</Text>
-                {lang.local_name && lang.local_name !== lang.name && (
-                  <Text style={styles.langLocalName}>{lang.local_name}</Text>
-                )}
-              </View>
-              {selectedLanguage.id === lang.id ? (
-                <Check size={20} color="#FF6596" />
-              ) : (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Text style={{ fontSize: 13, color: '#999' }}>{lang.biblesCount || '?'} versions</Text>
-                  <ChevronRight size={20} color="#ccc" />
+        <View style={styles.languageListContainer}>
+          {filteredLanguages.map(lang => {
+            const isSelected = selectedLanguage.id === lang.id;
+            return (
+              <TouchableOpacity 
+                key={lang.id} 
+                style={[styles.langItem, isSelected && styles.langItemActive]} 
+                onPress={() => handleSelectLanguage(lang)}
+                activeOpacity={0.7}
+              >
+                <View>
+                  <Text style={[styles.langName, isSelected && styles.textActive]}>{lang.name}</Text>
+                  {lang.local_name && lang.local_name !== lang.name && (
+                    <Text style={styles.langLocalName}>{lang.local_name}</Text>
+                  )}
                 </View>
-              )}
-            </TouchableOpacity>
-          ))}
+                {isSelected ? (
+                  <Check size={20} color="#FF6596" />
+                ) : (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={{ fontSize: 13, color: '#999' }}>{lang.biblesCount || '?'} versions</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            )
+          })}
         </View>
       </ScrollView>
     </View>
@@ -378,17 +391,20 @@ export default function VersionManager({
     );
   };
 
-  // ---------------- HEADERS ----------------
-
   let headerTitle = "My Versions";
   let headerLeft = null;
   let headerRight = null;
 
   if (currentScreen === 'MyVersions') {
     headerTitle = "My Versions";
+    headerLeft = (
+      <TouchableOpacity onPress={() => router.back()} style={{ padding: 8 }}>
+        <X size={24} color="#1a1a1a" />
+      </TouchableOpacity>
+    );
     headerRight = (
       <View style={{ flexDirection: 'row' }}>
-        <TouchableOpacity onPress={() => setIsEditMode(!isEditMode)} style={styles.headerBtn}>
+        <TouchableOpacity onPress={() => { animateLayout(); setIsEditMode(!isEditMode); }} style={styles.headerBtn}>
           <Settings size={20} color={isEditMode ? "#FF6596" : "#1a1a1a"} />
         </TouchableOpacity>
         <TouchableOpacity onPress={() => push('DiscoverVersions')} style={styles.headerBtn}>
@@ -399,7 +415,7 @@ export default function VersionManager({
   } else if (currentScreen === 'DiscoverVersions') {
     headerTitle = "Discover Versions";
     headerLeft = (
-      <TouchableOpacity onPress={pop} style={{ padding: 8, marginLeft: -8 }}>
+      <TouchableOpacity onPress={pop} style={{ padding: 8 }}>
         <ChevronLeft size={24} color="#1a1a1a" />
       </TouchableOpacity>
     );
@@ -412,37 +428,64 @@ export default function VersionManager({
   } else if (currentScreen === 'LanguageSelect') {
     headerTitle = "Languages";
     headerLeft = (
-      <TouchableOpacity onPress={pop} style={{ padding: 8, marginLeft: -8 }}>
+      <TouchableOpacity onPress={pop} style={{ padding: 8 }}>
         <ChevronLeft size={24} color="#1a1a1a" />
       </TouchableOpacity>
     );
   } else if (currentScreen === 'VersionDetail') {
     headerTitle = "Version Info";
     headerLeft = (
-      <TouchableOpacity onPress={pop} style={{ padding: 8, marginLeft: -8 }}>
+      <TouchableOpacity onPress={pop} style={{ padding: 8 }}>
         <ChevronLeft size={24} color="#1a1a1a" />
       </TouchableOpacity>
     );
   }
 
   return (
-    <AppModal 
-      isOpen={isOpen} 
-      onClose={onClose} 
-      title={headerTitle} 
-      headerTitleAlign="left"
-      headerLeft={headerLeft}
-      headerRight={headerRight}
-    >
+    <SafeAreaView style={styles.container}>
+      <View style={styles.modalHeader}>
+        <View style={styles.headerLeftContainer}>
+          {headerLeft}
+        </View>
+        <Text style={styles.modalTitle}>{headerTitle}</Text>
+        <View style={styles.headerRightContainer}>
+          {headerRight}
+        </View>
+      </View>
       {currentScreen === 'MyVersions' && renderMyVersions()}
       {currentScreen === 'DiscoverVersions' && renderDiscoverVersions()}
       {currentScreen === 'LanguageSelect' && renderLanguageSelect()}
       {currentScreen === 'VersionDetail' && renderVersionDetail()}
-    </AppModal>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#fff' },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  headerLeftContainer: {
+    minWidth: 60,
+    alignItems: 'flex-start'
+  },
+  headerRightContainer: {
+    minWidth: 60,
+    alignItems: 'flex-end'
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    flex: 1,
+    textAlign: 'center'
+  },
   content: { flexShrink: 1, backgroundColor: '#fff' },
   listContainer: { padding: 16, gap: 12 },
   loadingWrapper: { flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 200 },

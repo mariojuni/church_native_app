@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, SafeAreaView, Platform } from 'react-native';
 import { Settings, BookOpen } from 'lucide-react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuthStore } from '../../store/useAuthStore';
 import { getUserPreferences, saveUserPreferences, getSavedVersions, fetchBibleIndex } from '../../utils/bibleApi';
 
 import BibleReader from '../../components/Bible/BibleReader';
-import VersionManager from '../../components/Bible/VersionManager';
 
 import BooksModal from '../../components/Bible/BooksModal';
 
@@ -19,20 +19,22 @@ export default function BibleScreen() {
   const [savedVersions, setSavedVersions] = useState<any[]>([]);
   const [books, setBooks] = useState<any[]>([]);
 
-  const [isVersionManagerOpen, setIsVersionManagerOpen] = useState(false);
   const [isBooksModalOpen, setIsBooksModalOpen] = useState(false);
+  const router = useRouter();
 
 
   // Load initial preferences and versions
-  useEffect(() => {
-    const init = async () => {
-      const prefs = await getUserPreferences();
-      setPreferences(prefs);
-      const versions = await getSavedVersions();
-      setSavedVersions(versions);
-    };
-    init();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      const init = async () => {
+        const prefs = await getUserPreferences();
+        setPreferences(prefs);
+        const versions = await getSavedVersions();
+        setSavedVersions(versions);
+      };
+      init();
+    }, [])
+  );
 
   // Fetch books index when translation changes
   useEffect(() => {
@@ -114,20 +116,10 @@ export default function BibleScreen() {
         leftText={`${currentBook?.title || currentBook?.name || preferences.activeBook} ${preferences.activeChapter}`}
         onLeftPress={() => setIsBooksModalOpen(true)}
         rightText={activeVersionObj?.local_abbreviation || activeVersionObj?.abbreviation || 'BIBLE'}
-        onRightPress={() => setIsVersionManagerOpen(true)}
+        onRightPress={() => router.push('/version-manager')}
       />
 
-      <VersionManager 
-        isOpen={isVersionManagerOpen}
-        onClose={() => setIsVersionManagerOpen(false)}
-        savedVersions={savedVersions}
-        activeTranslation={preferences.activeTranslation}
-        refreshSavedVersions={refreshSavedVersions}
-        onSelectVersion={(id) => {
-          handleVersionChange(id);
-          setIsVersionManagerOpen(false);
-        }}
-      />
+
 
       <BooksModal 
         isOpen={isBooksModalOpen}

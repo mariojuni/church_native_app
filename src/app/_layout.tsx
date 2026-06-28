@@ -76,6 +76,7 @@ export default function RootLayout() {
         <Stack.Screen name="my-qr" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="more" options={{ headerShown: false }} />
         <Stack.Screen name="giving" options={{ headerShown: false }} />
+        <Stack.Screen name="version-manager" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="+not-found" />
       </Stack>
     </ThemeProvider>
