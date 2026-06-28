@@ -55,6 +55,37 @@ export default function AddScheduleModal({ isOpen, onClose }: AddScheduleModalPr
     return `${String(h).padStart(2, '0')}:${m} ${ampm}`;
   };
 
+  const renderPicker = (
+    show: boolean,
+    value: Date,
+    mode: 'date' | 'time',
+    onValueChange: (e: any, selected?: Date) => void,
+    onClose: () => void
+  ) => {
+    if (!show) return null;
+    return (
+      <View style={{ backgroundColor: '#fff', borderRadius: 12, marginTop: 8, padding: 8, borderWidth: 1, borderColor: '#f0f0f0' }}>
+        {Platform.OS === 'ios' && (
+          <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 8 }}>
+            <TouchableOpacity onPress={onClose} style={{ padding: 8 }}>
+              <Text style={{ color: '#FF6596', fontWeight: 'bold', fontSize: 16 }}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        <DateTimePicker
+          value={value}
+          mode={mode}
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={(e, date) => {
+            if (Platform.OS === 'android') onClose();
+            if (date) onValueChange(e, date);
+          }}
+          style={{ alignSelf: 'center' }}
+        />
+      </View>
+    );
+  };
+
   const handleSave = async () => {
     if (!event) {
       Alert.alert('Missing Info', 'Please provide event title.');
@@ -157,38 +188,28 @@ export default function AddScheduleModal({ isOpen, onClose }: AddScheduleModalPr
               </TouchableOpacity>
             </View>
 
-            {showDatePicker && (
-              <DateTimePicker
-                value={date}
-                mode="date"
-                display="default"
-                onChange={(e, selectedDate) => {
-                  setShowDatePicker(Platform.OS === 'ios');
-                  if (selectedDate) setDate(selectedDate);
-                }}
-              />
+            {renderPicker(
+              showDatePicker, 
+              date, 
+              'date', 
+              (e, selectedDate) => { if (selectedDate) setDate(selectedDate); },
+              () => setShowDatePicker(false)
             )}
-            {showStartTimePicker && (
-              <DateTimePicker
-                value={startTime}
-                mode="time"
-                display="default"
-                onChange={(e, selectedTime) => {
-                  setShowStartTimePicker(Platform.OS === 'ios');
-                  if (selectedTime) setStartTime(selectedTime);
-                }}
-              />
+            
+            {renderPicker(
+              showStartTimePicker, 
+              startTime, 
+              'time', 
+              (e, selectedTime) => { if (selectedTime) setStartTime(selectedTime); },
+              () => setShowStartTimePicker(false)
             )}
-            {showEndTimePicker && (
-              <DateTimePicker
-                value={endTime}
-                mode="time"
-                display="default"
-                onChange={(e, selectedTime) => {
-                  setShowEndTimePicker(Platform.OS === 'ios');
-                  if (selectedTime) setEndTime(selectedTime);
-                }}
-              />
+
+            {renderPicker(
+              showEndTimePicker, 
+              endTime, 
+              'time', 
+              (e, selectedTime) => { if (selectedTime) setEndTime(selectedTime); },
+              () => setShowEndTimePicker(false)
             )}
 
             <View style={styles.inputGroup}>
