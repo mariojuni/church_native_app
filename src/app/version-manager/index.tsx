@@ -82,7 +82,7 @@ export default function MyVersionsScreen() {
         </View>
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} contentContainerStyle={{ paddingTop: 16 }}>
         <View style={styles.discoverListContainer}>
           {savedVersions.length === 0 ? (
             <Text style={styles.emptyText}>No versions saved yet. Click + to find translations.</Text>
@@ -96,12 +96,13 @@ export default function MyVersionsScreen() {
                   key={version.id}
                   style={[
                     styles.myVersionsListItem,
-                    isActive && { backgroundColor: 'rgba(255, 101, 150, 0.08)', borderBottomWidth: 0 }
+                    isActive && { backgroundColor: 'rgba(255, 101, 150, 0.04)', borderColor: '#FF6596', borderWidth: 1 }
                   ]}
                   onPress={() => {
                     handleSelectVersion(version.id);
                     router.back();
                   }}
+                  onLongPress={() => handleOptions(version)}
                   activeOpacity={0.7}
                 >
                     <View style={[styles.myVersionsAbbrBox, isActive && { backgroundColor: 'transparent' }]}>
@@ -116,10 +117,6 @@ export default function MyVersionsScreen() {
                       {version.title || version.local_title}
                     </Text>
                   </View>
-                  
-                  <TouchableOpacity onPress={() => handleOptions(version)} style={{ padding: 8 }}>
-                    <MoreHorizontal size={24} color="#999" />
-                  </TouchableOpacity>
                 </TouchableOpacity>
               );
             })
