@@ -16,6 +16,7 @@ interface AuthState {
   initialized: boolean;
   signup: (email: string, password: string) => Promise<any>;
   login: (email: string, password: string) => Promise<any>;
+  loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   initializeAuthListener: () => void;
 }
@@ -27,6 +28,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   initialized: false,
   signup: (email, password) => createUserWithEmailAndPassword(auth, email, password),
   login: (email, password) => signInWithEmailAndPassword(auth, email, password),
+  loginWithGoogle: async () => {
+    // Placeholder until Expo OAuth / Google Client IDs are provided
+    return Promise.resolve();
+  },
   logout: () => signOut(auth),
   initializeAuthListener: () => {
     onAuthStateChanged(auth, async (user) => {
