@@ -100,19 +100,19 @@ export default function VersionDetailScreen() {
           style={{ paddingHorizontal: 24, paddingBottom: 32, paddingTop: 40 }}
         >
           <TouchableOpacity 
-            style={[{ flexDirection: 'row', backgroundColor: '#1a1a1a', paddingVertical: 20, borderRadius: 20, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 15, shadowOffset: { width: 0, height: 8 }, elevation: 5 }, (isDownloaded || isDownloading) && { backgroundColor: '#E5E5E5', shadowOpacity: 0, elevation: 0 }]}
+            style={[{ flexDirection: 'row', backgroundColor: '#1a1a1a', paddingVertical: 20, borderRadius: 20, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 15, shadowOffset: { width: 0, height: 8 }, elevation: 5 }, (isDownloaded || isDownloading) && { backgroundColor: '#F0F0F0', shadowOpacity: 0, elevation: 0, opacity: isDownloaded ? 0.8 : 1 }]}
             onPress={handleDownload}
             disabled={isDownloaded || isDownloading}
             activeOpacity={0.8}
           >
             {isDownloading ? (
-              <ActivityIndicator color="#fff" style={{ marginRight: 10 }} />
+              <ActivityIndicator color="#999" style={{ marginRight: 10 }} />
             ) : isDownloaded ? (
-              <CheckCircle size={22} color="#999" style={{ marginRight: 10 }} />
+              <CheckCircle size={22} color="#4ADE80" style={{ marginRight: 10 }} />
             ) : (
               <CloudDownload size={22} color="#fff" style={{ marginRight: 10 }} />
             )}
-            <Text style={[{ color: '#fff', fontSize: 18, fontWeight: '800', letterSpacing: 0.5 }, isDownloaded && { color: '#999' }]}>
+            <Text style={[{ color: '#fff', fontSize: 18, fontWeight: '800', letterSpacing: 0.5 }, (isDownloaded || isDownloading) && { color: '#999' }]}>
               {isDownloading ? 'Downloading...' : isDownloaded ? 'Downloaded' : 'Download to Device'}
             </Text>
           </TouchableOpacity>

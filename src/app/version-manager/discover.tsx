@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, TextInput, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, ChevronRight, Search, Globe } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Search, Globe, CheckCircle2 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useVersionContext } from './_context';
 import { styles } from './_styles';
@@ -11,6 +11,7 @@ import { fetchBiblesByLanguage } from '../../utils/bibleApi';
 export default function DiscoverVersionsScreen() {
   const router = useRouter();
   const { savedVersions, selectedLanguage, publishers } = useVersionContext();
+  const downloadedIds = savedVersions.map((v: any) => String(v.id));
 
   const [bibles, setBibles] = useState<any[]>([]);
   const [biblesLoading, setBiblesLoading] = useState(false);
@@ -28,8 +29,7 @@ export default function DiscoverVersionsScreen() {
     }
   }, [selectedLanguage]);
 
-  const downloadedIds = savedVersions.map((v: any) => String(v.id));
-  let displayBibles = bibles.filter(b => !downloadedIds.includes(String(b.id)));
+  let displayBibles = bibles;
   
   if (discoverSearch) {
     const lower = discoverSearch.toLowerCase();
@@ -111,7 +111,11 @@ export default function DiscoverVersionsScreen() {
                     </View>
                     
                     <View style={{ marginLeft: 12 }}>
-                      <ChevronRight size={20} color="#ccc" />
+                      {downloadedIds.includes(String(bible.id)) ? (
+                        <CheckCircle2 size={22} color="#4ADE80" />
+                      ) : (
+                        <ChevronRight size={20} color="#ccc" />
+                      )}
                     </View>
                   </TouchableOpacity>
                 );
