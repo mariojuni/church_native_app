@@ -8,7 +8,7 @@ import { getUserPreferences, saveUserPreferences, getSavedVersions, fetchBibleIn
 
 import BibleReader from '../../components/Bible/BibleReader';
 import VersionManager from '../../components/Bible/VersionManager';
-import BibleLanguagesModal from '../../components/Bible/BibleLanguagesModal';
+
 import BooksModal from '../../components/Bible/BooksModal';
 
 import TopNavBar from '../../components/Navigation/TopNavBar';
@@ -21,7 +21,7 @@ export default function BibleScreen() {
 
   const [isVersionManagerOpen, setIsVersionManagerOpen] = useState(false);
   const [isBooksModalOpen, setIsBooksModalOpen] = useState(false);
-  const [isLanguagesModalOpen, setIsLanguagesModalOpen] = useState(false);
+
 
   // Load initial preferences and versions
   useEffect(() => {
@@ -126,21 +126,6 @@ export default function BibleScreen() {
         onSelectVersion={(id) => {
           handleVersionChange(id);
           setIsVersionManagerOpen(false);
-        }}
-        onAddVersionClick={() => {
-          setIsVersionManagerOpen(false);
-          setIsLanguagesModalOpen(true);
-        }}
-      />
-
-      <BibleLanguagesModal 
-        isOpen={isLanguagesModalOpen}
-        onClose={() => setIsLanguagesModalOpen(false)}
-        savedVersionIds={savedVersions.map(v => v.id)}
-        onVersionAdded={(translation) => {
-          refreshSavedVersions();
-          handleVersionChange(translation.id);
-          setIsLanguagesModalOpen(false);
         }}
       />
 
