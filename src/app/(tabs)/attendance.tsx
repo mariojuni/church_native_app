@@ -7,6 +7,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { db } from '../../firebase';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { useRouter } from 'expo-router';
+import AttendanceTab from '../../components/Staff/AttendanceTab';
 
 export default function AttendanceScreen() {
   const { members } = useMemberStore();
@@ -105,10 +106,10 @@ export default function AttendanceScreen() {
         )}
 
         {activeTab === 'attendance' && (
-          <View style={styles.placeholderCard}>
-            <Text style={styles.placeholderTitle}>Attendance List</Text>
-            <Text style={styles.placeholderText}>Detailed live attendance will be listed here.</Text>
-          </View>
+          <AttendanceTab 
+            members={members} 
+            showStaffFeatures={isStaff} 
+          />
         )}
 
         {activeTab === 'schedule' && (
