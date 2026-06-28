@@ -69,6 +69,7 @@ export default function VersionManagerScreen() {
   const [downloadingId, setDownloadingId] = useState<string | number | null>(null);
 
   const [search, setSearch] = useState('');
+  const [discoverSearch, setDiscoverSearch] = useState('');
   const [filteredLanguages, setFilteredLanguages] = useState<any[]>(POPULAR_LANGUAGES);
 
   const [selectedBibleDetail, setSelectedBibleDetail] = useState<any>(null);
@@ -235,65 +236,97 @@ export default function VersionManagerScreen() {
     </ScrollView>
   );
 
-  const renderDiscoverVersions = () => (
-    <View style={{ flexShrink: 1 }}>
-      {biblesLoading ? (
-        <View style={styles.loadingWrapper}>
-          <ActivityIndicator size="large" color="#FF6596" />
+  const renderDiscoverVersions = () => {
+    const downloadedIds = savedVersions.map(v => String(v.id));
+    let displayBibles = bibles.filter(b => !downloadedIds.includes(String(b.id)));
+    
+    if (discoverSearch) {
+      const lower = discoverSearch.toLowerCase();
+      displayBibles = displayBibles.filter(b => 
+        (b.title || b.localized_title || '').toLowerCase().includes(lower) ||
+        (b.abbreviation || b.localized_abbreviation || '').toLowerCase().includes(lower)
+      );
+    }
+
+    return (
+      <View style={{ flexShrink: 1 }}>
+        <View style={styles.searchContainer}>
+          <Search size={18} color="#999" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search Versions"
+            value={discoverSearch}
+            onChangeText={setDiscoverSearch}
+            placeholderTextColor="#999"
+            autoCapitalize="none"
+          />
         </View>
-      ) : (
-        <ScrollView style={styles.content}>
-          <View style={styles.listContainer}>
-            {bibles.length === 0 ? (
-              <Text style={styles.emptyText}>No Bibles found for this language.</Text>
-            ) : (
-              bibles.map(bible => {
-                const isDownloaded = savedVersions.map(v => String(v.id)).includes(String(bible.id));
-                const isDownloading = String(downloadingId) === String(bible.id);
-                const abbr = String(bible.abbreviation || bible.localized_abbreviation || bible.id || '').replace(/(\d{2,})$/, '\n$1');
-                
-                return (
-                  <TouchableOpacity
-                    key={bible.id}
-                    style={[styles.card, styles.cardInactive, isDownloading && { opacity: 0.6 }]}
-                    onPress={() => {
-                      setSelectedBibleDetail(bible);
-                      push('VersionDetail');
-                    }}
-                    disabled={isDownloading}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.abbrBox}>
-                      <Text style={styles.abbrText}>{abbr}</Text>
-                    </View>
-  
-                    <View style={styles.versionInfo}>
-                      <Text style={styles.versionName}>
-                        {bible.title || bible.localized_title}
-                      </Text>
-                      {bible.publisher_url && (
-                        <Text style={styles.publisherText}>Official Publisher Version</Text>
-                      )}
-                    </View>
-                    
-                    <View style={{ marginLeft: 12 }}>
-                      {isDownloading ? (
-                        <Text style={styles.downloadingText}>Loading...</Text>
-                      ) : isDownloaded ? (
-                        <CheckCircle size={20} color="#34C759" />
-                      ) : (
-                        <ChevronRight size={20} color="#ccc" />
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                );
-              })
+
+        <TouchableOpacity onPress={() => push('LanguageSelect')} style={styles.inlineLanguageRow} activeOpacity={0.7}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Globe size={18} color="#1a1a1a" />
+            <Text style={styles.inlineLanguageText}>{selectedLanguage.name}</Text>
+            {selectedLanguage.biblesCount && (
+              <View style={styles.inlineLanguageCount}>
+                <Text style={styles.inlineLanguageCountText}>{selectedLanguage.biblesCount}</Text>
+              </View>
             )}
           </View>
-        </ScrollView>
-      )}
-    </View>
-  );
+          <ChevronRight size={18} color="#999" />
+        </TouchableOpacity>
+
+        {biblesLoading ? (
+          <View style={styles.loadingWrapper}>
+            <ActivityIndicator size="large" color="#FF6596" />
+          </View>
+        ) : (
+          <ScrollView style={styles.content}>
+            <View style={styles.discoverListContainer}>
+              {displayBibles.length === 0 ? (
+                <Text style={styles.emptyText}>No versions found.</Text>
+              ) : (
+                displayBibles.map(bible => {
+                  const isDownloading = String(downloadingId) === String(bible.id);
+                  const abbr = String(bible.abbreviation || bible.localized_abbreviation || bible.id || '').replace(/(\d{2,})$/, '\n$1');
+                  
+                  return (
+                    <TouchableOpacity
+                      key={bible.id}
+                      style={[styles.discoverListItem, isDownloading && { opacity: 0.6 }]}
+                      onPress={() => {
+                        setSelectedBibleDetail(bible);
+                        push('VersionDetail');
+                      }}
+                      disabled={isDownloading}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.discoverAbbrBox}>
+                        <Text style={styles.discoverAbbrText}>{abbr}</Text>
+                      </View>
+    
+                      <View style={styles.versionInfo}>
+                        <Text style={styles.versionName}>
+                          {bible.title || bible.localized_title}
+                        </Text>
+                      </View>
+                      
+                      <View style={{ marginLeft: 12 }}>
+                        {isDownloading ? (
+                          <ActivityIndicator size="small" color="#FF6596" />
+                        ) : (
+                          <ChevronRight size={20} color="#ccc" />
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })
+              )}
+            </View>
+          </ScrollView>
+        )}
+      </View>
+    );
+  };
 
   const renderLanguageSelect = () => (
     <View style={{ flexShrink: 1 }}>
@@ -419,12 +452,7 @@ export default function VersionManagerScreen() {
         <ChevronLeft size={24} color="#1a1a1a" />
       </TouchableOpacity>
     );
-    headerRight = (
-      <TouchableOpacity onPress={() => push('LanguageSelect')} style={styles.languagePill}>
-        <Globe size={16} color="#FF6596" />
-        <Text style={styles.languagePillText}>{selectedLanguage.name}</Text>
-      </TouchableOpacity>
-    );
+    headerRight = null;
   } else if (currentScreen === 'LanguageSelect') {
     headerTitle = "Languages";
     headerLeft = (
@@ -579,7 +607,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f5f5f5',
-    margin: 16,
+    marginHorizontal: 16,
+    marginVertical: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderRadius: 14,
@@ -604,6 +633,59 @@ const styles = StyleSheet.create({
   },
   langName: { fontSize: 16, fontWeight: '600', color: '#1a1a1a' },
   langLocalName: { fontSize: 13, color: '#666', marginTop: 2 },
+  inlineLanguageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+  },
+  inlineLanguageText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1a1a1a',
+  },
+  inlineLanguageCount: {
+    backgroundColor: 'rgba(0,0,0,0.06)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  inlineLanguageCountText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#666',
+  },
+  discoverListContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+  },
+  discoverListItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f5f5f5',
+  },
+  discoverAbbrBox: {
+    width: 48,
+    height: 48,
+    backgroundColor: 'rgba(0,0,0,0.03)',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  discoverAbbrText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#1a1a1a',
+    textAlign: 'center',
+  },
   detailHeader: {
     alignItems: 'center',
     paddingVertical: 16,
