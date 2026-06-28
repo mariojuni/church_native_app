@@ -196,7 +196,7 @@ export default function HomeScreen() {
                 <Crown size={12} color="#fff" />
               </View>
               <Text style={styles.heroTitle}>
-                {new Date(`${upcomingEvent.date}T00:00:00`).toLocaleDateString('en-US', { weekday: 'long' })}
+                {new Date(`${upcomingEvent.date}T00:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
               </Text>
               <Text style={styles.heroEventName}>{upcomingEvent.event || 'Sunday Worship Service'}</Text>
               <Text style={styles.heroEventDetails}>
