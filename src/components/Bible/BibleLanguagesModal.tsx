@@ -84,7 +84,7 @@ export default function BibleLanguagesModal({ isOpen, onClose, savedVersionIds, 
   };
 
   const renderLanguages = () => (
-    <View style={{ flex: 1 }}>
+    <View style={{ flexShrink: 1 }}>
       <View style={styles.searchContainer}>
         <Search size={18} color="#999" />
         <TextInput
@@ -118,7 +118,7 @@ export default function BibleLanguagesModal({ isOpen, onClose, savedVersionIds, 
   );
 
   const renderBibles = () => (
-    <View style={{ flex: 1 }}>
+    <View style={{ flexShrink: 1 }}>
       {biblesLoading ? (
         <ActivityIndicator size="large" color="#FF6596" style={{ marginTop: 40 }} />
       ) : (
@@ -195,7 +195,7 @@ export default function BibleLanguagesModal({ isOpen, onClose, savedVersionIds, 
 }
 
 const styles = StyleSheet.create({
-  content: { flex: 1, backgroundColor: '#f9f9f9' },
+  content: { flexShrink: 1, backgroundColor: '#f9f9f9' },
   listContainer: { padding: 16 },
   searchContainer: {
     flexDirection: 'row',

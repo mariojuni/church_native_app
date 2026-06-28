@@ -98,7 +98,7 @@ export default function BooksModal({ isOpen, onClose, books, onSelectChapter }: 
 }
 
 const styles = StyleSheet.create({
-  content: { flex: 1, backgroundColor: '#fff' },
+  content: { flexShrink: 1, backgroundColor: '#fff' },
   bookItem: {
     paddingHorizontal: 24,
     paddingVertical: 18,
