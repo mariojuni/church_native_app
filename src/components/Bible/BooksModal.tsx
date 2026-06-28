@@ -141,7 +141,6 @@ const styles = StyleSheet.create({
   },
   bottomBar: {
     padding: 24,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
     backgroundColor: '#fff',
   },
   segmentContainer: {

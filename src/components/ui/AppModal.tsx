@@ -59,9 +59,7 @@ export default function AppModal({ isOpen, onClose, title, children, containerSt
 
           {/* Content */}
           <SafeAreaView edges={['bottom']} style={[styles.contentContainer, containerStyle]}>
-            <View style={{ paddingBottom: 16 }}>
-              {children}
-            </View>
+            {children}
           </SafeAreaView>
         </Animated.View>
       </View>
@@ -99,6 +97,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     flexShrink: 1,
+    paddingBottom: 16,
   },
   header: {
     flexDirection: 'row',

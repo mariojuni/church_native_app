@@ -139,7 +139,7 @@ export default function VersionManager({
 }
 
 const styles = StyleSheet.create({
-  content: { flexShrink: 1, backgroundColor: '#f9f9f9' },
+  content: { flexShrink: 1, backgroundColor: '#fff' },
   listContainer: { padding: 16, gap: 12 },
   emptyText: { textAlign: 'center', color: '#666', marginTop: 40 },
   headerBtn: { padding: 8, marginLeft: 8 },

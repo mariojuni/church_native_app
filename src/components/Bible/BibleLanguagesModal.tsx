@@ -195,7 +195,7 @@ export default function BibleLanguagesModal({ isOpen, onClose, savedVersionIds, 
 }
 
 const styles = StyleSheet.create({
-  content: { flexShrink: 1, backgroundColor: '#f9f9f9' },
+  content: { flexShrink: 1, backgroundColor: '#fff' },
   listContainer: { padding: 16 },
   searchContainer: {
     flexDirection: 'row',
