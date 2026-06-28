@@ -1,8 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, TextInput } from 'react-native';
-import { Check, Trash2, Plus, Settings, CloudDownload, ChevronLeft, ChevronRight, Search, Globe, CheckCircle, Info } from 'lucide-react-native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  ScrollView, 
+  Alert, 
+  ActivityIndicator, 
+  TextInput,
+  LayoutAnimation,
+  Platform,
+  UIManager
+} from 'react-native';
+import { Check, Trash2, Plus, Settings, CloudDownload, ChevronLeft, ChevronRight, Search, Globe, CheckCircle } from 'lucide-react-native';
 import { removeVersion, fetchOrganization, fetchBiblesByLanguage, downloadBibleOffline, saveVersion } from '../../utils/bibleApi';
 import AppModal from '../ui/AppModal';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const POPULAR_LANGUAGES = [
   { id: 'eng', tag: 'eng', name: 'English', local_name: 'English', biblesCount: 12 },
@@ -15,7 +31,7 @@ const POPULAR_LANGUAGES = [
   { id: 'kor', tag: 'kor', name: 'Korean', local_name: '한국어', biblesCount: 3 },
   { id: 'rus', tag: 'rus', name: 'Russian', local_name: 'Русский', biblesCount: 4 },
   { id: 'por', tag: 'por', name: 'Portuguese', local_name: 'Português', biblesCount: 5 },
-  { id: 'ind', tag: 'ind', name: 'Indonesian', local_name: 'Bahasa Indonesia', biblesCount: 4 }
+  { id: 'ind', tag: 'ind', name: 'Bahasa Indonesia', local_name: 'Bahasa Indonesia', biblesCount: 4 }
 ];
 
 type Screen = 'MyVersions' | 'DiscoverVersions' | 'LanguageSelect' | 'VersionDetail';
@@ -40,8 +56,19 @@ export default function VersionManager({
   const [stack, setStack] = useState<Screen[]>(['MyVersions']);
   const currentScreen = stack[stack.length - 1];
 
-  const push = (screen: Screen) => setStack(prev => [...prev, screen]);
-  const pop = () => setStack(prev => prev.length > 1 ? prev.slice(0, -1) : prev);
+  const animateLayout = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+  };
+
+  const push = (screen: Screen) => {
+    animateLayout();
+    setStack(prev => [...prev, screen]);
+  };
+  
+  const pop = () => {
+    animateLayout();
+    setStack(prev => prev.length > 1 ? prev.slice(0, -1) : prev);
+  };
 
   const [isEditMode, setIsEditMode] = useState(false);
   const [publishers, setPublishers] = useState<Record<string, string>>({});
@@ -156,8 +183,6 @@ export default function VersionManager({
     setDownloadingId(null);
   };
 
-  // ---------------- RENDERS ----------------
-
   const renderMyVersions = () => (
     <ScrollView style={styles.content}>
       <View style={styles.listContainer}>
@@ -171,9 +196,10 @@ export default function VersionManager({
             return (
               <TouchableOpacity
                 key={version.id}
-                style={[styles.card, isActive && styles.cardActive]}
+                style={[styles.card, isActive ? styles.cardActive : styles.cardInactive]}
                 onPress={() => !isEditMode && onSelectVersion(version.id)}
                 disabled={isEditMode}
+                activeOpacity={0.7}
               >
                 {isEditMode && (
                   <TouchableOpacity onPress={() => handleRemove(version.id)} style={styles.deleteIcon}>
@@ -309,11 +335,11 @@ export default function VersionManager({
     const abbr = String(bible.abbreviation || bible.localized_abbreviation || bible.id || '');
 
     return (
-      <View style={{ flexShrink: 1, padding: 24, justifyContent: 'space-between' }}>
-        <ScrollView showsVerticalScrollIndicator={false}>
+      <View style={{ flexShrink: 1, justifyContent: 'space-between' }}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 24, paddingBottom: 120 }}>
           <View style={styles.detailHeader}>
-            <View style={[styles.abbrBox, { width: 72, height: 72, borderRadius: 16, marginBottom: 16 }]}>
-              <Text style={[styles.abbrText, { fontSize: 18 }]}>{abbr}</Text>
+            <View style={styles.heroAbbrBox}>
+              <Text style={styles.heroAbbrText}>{abbr}</Text>
             </View>
             <Text style={styles.detailTitle}>{bible.title || bible.localized_title}</Text>
             <Text style={styles.detailPublisher}>
@@ -329,22 +355,25 @@ export default function VersionManager({
           </View>
         </ScrollView>
 
-        <TouchableOpacity 
-          style={[styles.downloadBtn, (isDownloaded || isDownloading) && styles.downloadBtnDisabled]}
-          onPress={() => handleDownload(bible)}
-          disabled={isDownloaded || isDownloading}
-        >
-          {isDownloading ? (
-            <ActivityIndicator color="#1a1a1a" style={{ marginRight: 8 }} />
-          ) : isDownloaded ? (
-            <CheckCircle size={20} color="#999" style={{ marginRight: 8 }} />
-          ) : (
-            <CloudDownload size={20} color="#fff" style={{ marginRight: 8 }} />
-          )}
-          <Text style={[styles.downloadBtnText, (isDownloaded || isDownloading) && { color: '#1a1a1a' }]}>
-            {isDownloading ? 'Downloading...' : isDownloaded ? 'Downloaded' : 'Download Version'}
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.stickyFooter}>
+          <TouchableOpacity 
+            style={[styles.downloadBtn, (isDownloaded || isDownloading) && styles.downloadBtnDisabled]}
+            onPress={() => handleDownload(bible)}
+            disabled={isDownloaded || isDownloading}
+            activeOpacity={0.8}
+          >
+            {isDownloading ? (
+              <ActivityIndicator color="#fff" style={{ marginRight: 8 }} />
+            ) : isDownloaded ? (
+              <CheckCircle size={20} color="#fff" style={{ marginRight: 8 }} />
+            ) : (
+              <CloudDownload size={20} color="#fff" style={{ marginRight: 8 }} />
+            )}
+            <Text style={styles.downloadBtnText}>
+              {isDownloading ? 'Downloading...' : isDownloaded ? 'Downloaded' : 'Download Version'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   };
@@ -416,6 +445,7 @@ export default function VersionManager({
 const styles = StyleSheet.create({
   content: { flexShrink: 1, backgroundColor: '#fff' },
   listContainer: { padding: 16, gap: 12 },
+  loadingWrapper: { flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 200 },
   emptyText: { textAlign: 'center', color: '#666', marginTop: 40 },
   headerBtn: { padding: 8, marginLeft: 8 },
   languagePill: {
@@ -435,26 +465,37 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
+    padding: 16,
+    borderRadius: 16,
     marginBottom: 0,
   },
+  cardInactive: {
+    backgroundColor: '#f8f9fa',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
   cardActive: {
+    backgroundColor: '#fff',
     borderColor: '#FF6596',
-    borderWidth: 2,
+    borderWidth: 1.5,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
   },
   abbrBox: {
     width: 48,
     height: 48,
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.04)',
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
     padding: 4,
+  },
+  abbrBoxActive: {
+    backgroundColor: 'rgba(255, 101, 150, 0.1)',
   },
   abbrText: {
     fontSize: 11,
@@ -468,13 +509,13 @@ const styles = StyleSheet.create({
     color: '#666',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    marginBottom: 2,
+    marginBottom: 4,
   },
   versionName: { 
-    fontSize: 14, 
-    fontWeight: 'bold', 
+    fontSize: 15, 
+    fontWeight: '600', 
     color: '#1a1a1a',
-    lineHeight: 18,
+    lineHeight: 20,
   },
   textActive: { color: '#FF6596' },
   deleteIcon: {
@@ -494,36 +535,54 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#f5f5f5',
     margin: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 14,
   },
-  searchInput: { flex: 1, marginLeft: 8, fontSize: 16, color: '#1a1a1a' },
+  searchInput: { flex: 1, marginLeft: 10, fontSize: 16, color: '#1a1a1a' },
+  languageListContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+  },
   langItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 16,
     paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 16,
+    marginBottom: 8,
+  },
+  langItemActive: {
+    backgroundColor: 'rgba(255,101,150,0.05)',
   },
   langName: { fontSize: 16, fontWeight: '600', color: '#1a1a1a' },
   langLocalName: { fontSize: 13, color: '#666', marginTop: 2 },
   detailHeader: {
     alignItems: 'center',
-    paddingVertical: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-    marginBottom: 24,
+    paddingVertical: 16,
+    marginBottom: 32,
+  },
+  heroAbbrBox: {
+    width: 80,
+    height: 80,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 101, 150, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  heroAbbrText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FF6596',
   },
   detailTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
+    fontSize: 24,
+    fontWeight: '800',
     color: '#1a1a1a',
     textAlign: 'center',
     marginBottom: 8,
@@ -531,33 +590,52 @@ const styles = StyleSheet.create({
   detailPublisher: {
     fontSize: 14,
     color: '#FF6596',
-    fontWeight: '500',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   detailSection: {
     marginBottom: 32,
   },
   detailSectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#1a1a1a',
     marginBottom: 12,
   },
   detailBody: {
-    fontSize: 15,
-    lineHeight: 24,
+    fontSize: 16,
+    lineHeight: 26,
     color: '#444',
+  },
+  stickyFooter: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    padding: 24,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
   },
   downloadBtn: {
     flexDirection: 'row',
-    backgroundColor: '#1a1a1a',
-    paddingVertical: 16,
-    borderRadius: 12,
+    backgroundColor: '#FF6596',
+    paddingVertical: 18,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 16,
+    shadowColor: '#FF6596',
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
   },
   downloadBtnDisabled: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: 'rgba(255, 101, 150, 0.5)',
+    shadowOpacity: 0,
+    elevation: 0,
   },
   downloadBtnText: {
     color: '#fff',
