@@ -75,12 +75,12 @@ export default function AddScheduleModal({ isOpen, onClose }: AddScheduleModalPr
         <DateTimePicker
           value={value}
           mode={mode}
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          display={Platform.OS === 'ios' ? (mode === 'date' ? 'inline' : 'spinner') : 'default'}
           onChange={(e, date) => {
             if (Platform.OS === 'android') onClose();
             if (date) onValueChange(e, date);
           }}
-          style={{ alignSelf: 'center' }}
+          style={Platform.OS === 'ios' ? { width: '100%', height: mode === 'date' ? 320 : 200 } : {}}
         />
       </View>
     );
