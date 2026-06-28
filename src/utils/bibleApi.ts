@@ -95,6 +95,42 @@ export const fetchBiblesByLanguage = async (languageTag: string) => {
   }
 };
 
+const repairSingleVerseText = (rawContent: string, passageId: string) => {
+  const regex = /(?:^|\s+)(\d+)\s+/g;
+  const matches = [...rawContent.matchAll(regex)];
+  
+  const verses = [];
+  for (let i = 0; i < matches.length; i++) {
+      const vNum = parseInt(matches[i][1], 10);
+      if (verses.length === 0) {
+          if (vNum === 1) {
+             verses.push({ index: matches[i].index!, length: matches[i][0].length, num: "1" });
+          }
+      } else {
+          const lastNum = parseInt(verses[verses.length-1].num, 10);
+          if (vNum > lastNum && vNum <= lastNum + 5) {
+              verses.push({ index: matches[i].index!, length: matches[i][0].length, num: matches[i][1] });
+          }
+      }
+  }
+  
+  if (verses.length > 1) {
+      const finalData = [];
+      for (let i=0; i<verses.length; i++) {
+          const v = verses[i];
+          const startIndex = v.index + v.length;
+          const endIndex = (i + 1 < verses.length) ? verses[i+1].index : rawContent.length;
+          finalData.push({
+              id: `${passageId}.${v.num}`,
+              verseNumber: v.num,
+              content: rawContent.substring(startIndex, endIndex).trim()
+          });
+      }
+      return finalData;
+  }
+  return null;
+};
+
 const parseHTMLToJSON = (html: string, passageId: string) => {
   const verses = [];
   const verseRegex = /<span[^>]*class="[^"]*yv-v[^"]*"[^>]*v="(\d+)"[^>]*>(.*?)<\/span>(.*?)(?=<span[^>]*class="[^"]*yv-v|$)/gs;
@@ -109,10 +145,15 @@ const parseHTMLToJSON = (html: string, passageId: string) => {
   }
 
   if (verses.length === 0 && html.length > 0) {
+     const rawText = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+     const repaired = repairSingleVerseText(rawText, passageId);
+     if (repaired) {
+        return repaired;
+     }
      verses.push({
         id: passageId,
         verseNumber: "1",
-        content: html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+        content: rawText
      });
   }
   return verses;
@@ -173,6 +214,13 @@ export const fetchChapterData = async (translationId: string | number, passageId
   if (offlineChapterStr) {
     try {
       const parsed = JSON.parse(offlineChapterStr);
+      if (parsed.length === 1 && parsed[0].verseNumber === "1") {
+         const repaired = repairSingleVerseText(parsed[0].content, passageId);
+         if (repaired) {
+            sessionCache.set(cacheKey, repaired);
+            return repaired;
+         }
+      }
       sessionCache.set(cacheKey, parsed);
       return parsed;
     } catch (e) {
@@ -234,7 +282,11 @@ export const fetchChapterData = async (translationId: string | number, passageId
       const docRef = doc(db, 'bibles', String(translationId), 'chapters', passageId);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists() && docSnap.data().verses) {
-        const fallbackVerses = docSnap.data().verses;
+        let fallbackVerses = docSnap.data().verses;
+        if (fallbackVerses.length === 1 && fallbackVerses[0].verseNumber === "1") {
+           const repaired = repairSingleVerseText(fallbackVerses[0].content, passageId);
+           if (repaired) fallbackVerses = repaired;
+        }
         sessionCache.set(cacheKey, fallbackVerses);
         return fallbackVerses;
       }
