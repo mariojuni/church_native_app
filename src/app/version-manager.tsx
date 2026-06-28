@@ -232,6 +232,21 @@ export default function VersionManagerScreen() {
             );
           })
         )}
+        
+        <TouchableOpacity 
+          style={styles.discoverInlineRow}
+          onPress={() => push('DiscoverVersions')}
+          disabled={isEditMode}
+          activeOpacity={0.7}
+        >
+          <View style={styles.discoverInlineIconBox}>
+            <Plus size={20} color="#FF6596" />
+          </View>
+          <View style={styles.versionInfo}>
+            <Text style={styles.discoverInlineText}>Discover More Versions</Text>
+          </View>
+          <ChevronRight size={20} color="#ccc" />
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -435,14 +450,9 @@ export default function VersionManagerScreen() {
       </TouchableOpacity>
     );
     headerRight = (
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginRight: 8 }}>
-        <TouchableOpacity onPress={() => push('DiscoverVersions')} style={styles.discoverPill}>
-          <Text style={styles.discoverPillText}>+ Discover</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => { animateLayout(); setIsEditMode(!isEditMode); }}>
-          <Text style={styles.editText}>{isEditMode ? 'Done' : 'Edit'}</Text>
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity onPress={() => { animateLayout(); setIsEditMode(!isEditMode); }} style={{ padding: 8 }}>
+        <Text style={styles.editText}>{isEditMode ? 'Done' : 'Edit'}</Text>
+      </TouchableOpacity>
     );
   } else if (currentScreen === 'DiscoverVersions') {
     headerTitle = "Discover Versions";
@@ -615,9 +625,28 @@ const styles = StyleSheet.create({
     fontSize: 13
   },
   editText: {
-    color: '#1a1a1a',
-    fontSize: 15,
+    color: '#FF6596',
+    fontSize: 16,
     fontWeight: '600',
+  },
+  discoverInlineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  discoverInlineIconBox: {
+    width: 48,
+    height: 48,
+    backgroundColor: 'rgba(255,101,150,0.05)',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  discoverInlineText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a1a1a',
   },
   downloadingText: {
     color: '#FF6596',
