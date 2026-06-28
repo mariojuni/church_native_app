@@ -53,9 +53,23 @@ export default function HomeScreen() {
         } as any;
       });
 
+      const parseTime = (timeStr: string) => {
+        if (!timeStr) return '09:00'; // Default legacy time
+        const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+        if (!match) return timeStr;
+        let [_, hours, minutes, modifier] = match;
+        let h = parseInt(hours, 10);
+        if (modifier.toUpperCase() === 'PM' && h < 12) h += 12;
+        if (modifier.toUpperCase() === 'AM' && h === 12) h = 0;
+        return `${h.toString().padStart(2, '0')}:${minutes}`;
+      };
+
       const upcoming = allSchedules
         .filter(s => s.date >= today)
-        .sort((a, b) => a.date.localeCompare(b.date));
+        .sort((a, b) => {
+          if (a.date !== b.date) return a.date.localeCompare(b.date);
+          return parseTime(a.time).localeCompare(parseTime(b.time));
+        });
 
       if (upcoming.length > 0) {
         // Show up to 5 upcoming events in the carousel, closest first
