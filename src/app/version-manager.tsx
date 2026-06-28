@@ -188,9 +188,9 @@ export default function VersionManagerScreen() {
 
   const renderMyVersions = () => (
     <ScrollView style={styles.content}>
-      <View style={styles.listContainer}>
+      <View style={styles.discoverListContainer}>
         {savedVersions.length === 0 ? (
-          <Text style={styles.emptyText}>No versions saved yet. Click the + icon to discover translations.</Text>
+          <Text style={styles.emptyText}>No versions saved yet. Click + Discover to find translations.</Text>
         ) : (
           savedVersions.map((version) => {
             const isActive = String(version.id) === String(activeTranslation);
@@ -199,29 +199,29 @@ export default function VersionManagerScreen() {
             return (
               <TouchableOpacity
                 key={version.id}
-                style={[styles.card, isActive ? styles.cardActive : styles.cardInactive]}
+                style={styles.discoverListItem}
                 onPress={() => !isEditMode && handleSelectVersion(version.id)}
                 disabled={isEditMode}
                 activeOpacity={0.7}
               >
                 {isEditMode && (
-                  <TouchableOpacity onPress={() => handleRemove(version.id)} style={styles.deleteIcon}>
-                    <Trash2 size={14} color="#fff" />
+                  <TouchableOpacity onPress={() => handleRemove(version.id)} style={styles.deleteMinusIcon}>
+                    <View style={styles.minusLine} />
                   </TouchableOpacity>
                 )}
                 
                 {!isEditMode && (
-                  <View style={[styles.abbrBox, isActive && styles.abbrBoxActive]}>
-                    <Text style={[styles.abbrText, isActive && styles.textActive]}>{abbr}</Text>
+                  <View style={[styles.discoverAbbrBox, isActive && styles.abbrBoxActive]}>
+                    <Text style={[styles.discoverAbbrText, isActive && styles.textActive]}>{abbr}</Text>
                   </View>
                 )}
 
                 <View style={styles.versionInfo}>
-                  <Text style={styles.publisherText}>
-                    {publishers[version.organization_id] || (version.organization_id ? 'Loading...' : 'Public Domain')}
-                  </Text>
                   <Text style={[styles.versionName, isActive && styles.textActive]}>
                     {version.title || version.local_title}
+                  </Text>
+                  <Text style={styles.publisherText}>
+                    {publishers[version.organization_id] || (version.organization_id ? 'Loading...' : 'Public Domain')}
                   </Text>
                 </View>
                 
@@ -272,7 +272,6 @@ export default function VersionManagerScreen() {
               </View>
             )}
           </View>
-          <ChevronRight size={18} color="#999" />
         </TouchableOpacity>
 
         {biblesLoading ? (
@@ -436,12 +435,12 @@ export default function VersionManagerScreen() {
       </TouchableOpacity>
     );
     headerRight = (
-      <View style={{ flexDirection: 'row' }}>
-        <TouchableOpacity onPress={() => { animateLayout(); setIsEditMode(!isEditMode); }} style={styles.headerBtn}>
-          <Settings size={20} color={isEditMode ? "#FF6596" : "#1a1a1a"} />
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginRight: 8 }}>
+        <TouchableOpacity onPress={() => push('DiscoverVersions')} style={styles.discoverPill}>
+          <Text style={styles.discoverPillText}>+ Discover</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => push('DiscoverVersions')} style={styles.headerBtn}>
-          <Plus size={20} color="#1a1a1a" />
+        <TouchableOpacity onPress={() => { animateLayout(); setIsEditMode(!isEditMode); }}>
+          <Text style={styles.editText}>{isEditMode ? 'Done' : 'Edit'}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -589,14 +588,36 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   textActive: { color: '#FF6596' },
-  deleteIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+  deleteMinusIcon: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: '#ff3b30',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
+  },
+  minusLine: {
+    width: 12,
+    height: 2,
+    backgroundColor: '#fff',
+    borderRadius: 1,
+  },
+  discoverPill: {
+    backgroundColor: 'rgba(255,101,150,0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  discoverPillText: {
+    color: '#FF6596',
+    fontWeight: '600',
+    fontSize: 13
+  },
+  editText: {
+    color: '#1a1a1a',
+    fontSize: 15,
+    fontWeight: '600',
   },
   downloadingText: {
     color: '#FF6596',
