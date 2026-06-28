@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, Crown, Users, Calendar, HeartHandshake, HandHeart, Grid, BarChart3, BookOpen, ChevronRight, Quote, CheckCircle2, HelpCircle, XCircle } from 'lucide-react-native';
+import { Search, Crown, Users, Calendar, CalendarDays, HeartHandshake, HandHeart, Grid, BarChart3, BookOpen, ChevronRight, Quote, CheckCircle2, HelpCircle, XCircle } from 'lucide-react-native';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useMemberStore } from '../../store/useMemberStore';
 import { db } from '../../firebase';
@@ -42,7 +42,6 @@ export default function HomeScreen() {
     if (!currentUser) return;
     const q = collection(db, 'schedules');
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const today = new Date().toISOString().split('T')[0];
       
       const allSchedules = snapshot.docs.map(docSnap => {
         const data = docSnap.data();
@@ -65,7 +64,29 @@ export default function HomeScreen() {
       };
 
       const upcoming = allSchedules
-        .filter(s => s.date >= today)
+        .filter(s => {
+          const now = new Date();
+          // local date string in YYYY-MM-DD
+          const year = now.getFullYear();
+          const month = String(now.getMonth() + 1).padStart(2, '0');
+          const day = String(now.getDate()).padStart(2, '0');
+          const todayStr = `${year}-${month}-${day}`;
+          
+          if (s.date > todayStr) return true;
+          if (s.date < todayStr) return false;
+          
+          const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+          let endTimeParsed = parseTime(s.endTime || s.time);
+          
+          if (!s.endTime) {
+            // fallback: assume event lasts 2 hours
+            let h = parseInt(endTimeParsed.split(':')[0], 10) + 2;
+            if (h > 23) h = 23;
+            endTimeParsed = `${String(h).padStart(2, '0')}:${endTimeParsed.split(':')[1]}`;
+          }
+          
+          return endTimeParsed >= currentTimeStr;
+        })
         .sort((a, b) => {
           if (a.date !== b.date) return a.date.localeCompare(b.date);
           return parseTime(a.time).localeCompare(parseTime(b.time));
@@ -241,7 +262,7 @@ export default function HomeScreen() {
                       >
                         <View style={styles.liveBadge}>
                           <Text style={styles.liveText}>UPCOMING</Text>
-                          <Crown size={12} color="#fff" />
+                          <CalendarDays size={12} color="#fff" />
                         </View>
                         <Text style={styles.heroTitle}>
                           {new Date(`${event.date}T00:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
@@ -251,17 +272,17 @@ export default function HomeScreen() {
                           {event.time || '9:00 AM'} • {event.location || 'Main Sanctuary'}
                         </Text>
                         <View style={styles.heroRsvpRow}>
-                          <TouchableOpacity style={[styles.heroRsvpBtn, dutyStatus === 'going' && styles.rsvpGoing]} onPress={() => handleRsvp(event.id, 'going')}>
-                            <CheckCircle2 size={16} color="#fff" />
-                            <Text style={styles.heroRsvpText}>Going</Text>
+                          <TouchableOpacity style={[styles.heroRsvpBtn, dutyStatus === 'going' && styles.rsvpActiveBtn]} onPress={() => handleRsvp(event.id, 'going')}>
+                            <CheckCircle2 size={16} color={dutyStatus === 'going' ? '#FF6596' : '#fff'} />
+                            <Text style={[styles.heroRsvpText, dutyStatus === 'going' && styles.rsvpActiveText]}>Going</Text>
                           </TouchableOpacity>
-                          <TouchableOpacity style={[styles.heroRsvpBtn, dutyStatus === 'maybe' && styles.rsvpMaybe]} onPress={() => handleRsvp(event.id, 'maybe')}>
-                            <HelpCircle size={16} color="#fff" />
-                            <Text style={styles.heroRsvpText}>Maybe</Text>
+                          <TouchableOpacity style={[styles.heroRsvpBtn, dutyStatus === 'maybe' && styles.rsvpActiveBtn]} onPress={() => handleRsvp(event.id, 'maybe')}>
+                            <HelpCircle size={16} color={dutyStatus === 'maybe' ? '#F59E0B' : '#fff'} />
+                            <Text style={[styles.heroRsvpText, dutyStatus === 'maybe' && { color: '#F59E0B' }]}>Maybe</Text>
                           </TouchableOpacity>
-                          <TouchableOpacity style={[styles.heroRsvpBtn, dutyStatus === 'not_going' && styles.rsvpNotGoing]} onPress={() => handleRsvp(event.id, 'not_going')}>
-                            <XCircle size={16} color="#fff" />
-                            <Text style={styles.heroRsvpText}>Not Going</Text>
+                          <TouchableOpacity style={[styles.heroRsvpBtn, dutyStatus === 'not_going' && styles.rsvpActiveBtn]} onPress={() => handleRsvp(event.id, 'not_going')}>
+                            <XCircle size={16} color={dutyStatus === 'not_going' ? '#EF4444' : '#fff'} />
+                            <Text style={[styles.heroRsvpText, dutyStatus === 'not_going' && { color: '#EF4444' }]}>Not Going</Text>
                           </TouchableOpacity>
                         </View>
                       </LinearGradient>
@@ -380,10 +401,8 @@ const styles = StyleSheet.create({
   rsvpRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
   rsvpBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f0f0f0', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, gap: 4 },
   rsvpText: { fontSize: 12, fontWeight: '700', color: '#666' },
-  rsvpGoing: { backgroundColor: '#4ADE80' },
-  rsvpMaybe: { backgroundColor: '#F59E0B' },
-  rsvpNotGoing: { backgroundColor: '#EF4444' },
-  rsvpTextActive: { color: '#fff' },
+  rsvpActiveBtn: { backgroundColor: '#fff' },
+  rsvpActiveText: { color: '#FF6596' },
   heroCard: { padding: 24, borderRadius: 24, marginBottom: 0, overflow: 'hidden' },
   heroScroll: { marginBottom: 16 },
   paginationRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, marginBottom: 24 },

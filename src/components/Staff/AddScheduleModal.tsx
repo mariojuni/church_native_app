@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Modal, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { X, Calendar as CalendarIcon, Clock, Users, ChevronDown } from 'lucide-react-native';
 import { db } from '../../firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useMemberStore } from '../../store/useMemberStore';
 
 const ROLES = [
+  { id: 'presider', label: 'Presider' },
   { id: 'openingPrayer', label: 'Opening Prayer' },
   { id: 'usher1', label: 'Usher 1' },
   { id: 'usher2', label: 'Usher 2' },
@@ -24,17 +26,38 @@ interface AddScheduleModalProps {
 export default function AddScheduleModal({ isOpen, onClose }: AddScheduleModalProps) {
   const { members } = useMemberStore();
   const [event, setEvent] = useState('Sunday Worship Service');
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('09:00 AM');
+  const [date, setDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [startTime, setStartTime] = useState(new Date(new Date().setHours(9, 0, 0, 0)));
+  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
+  const [endTime, setEndTime] = useState(new Date(new Date().setHours(11, 0, 0, 0)));
+  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
   const [location, setLocation] = useState('Main Sanctuary');
   
   // Store assigned member IDs by role ID
   const [assignments, setAssignments] = useState<Record<string, string>>({});
   const [selectingRole, setSelectingRole] = useState<string | null>(null);
 
+  const formatDateForUI = (d: Date) => {
+    return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
+  };
+
+  const formatDateForDB = (d: Date) => {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  const formatTime = (d: Date) => {
+    let h = d.getHours();
+    const m = String(d.getMinutes()).padStart(2, '0');
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12;
+    if (h === 0) h = 12;
+    return `${String(h).padStart(2, '0')}:${m} ${ampm}`;
+  };
+
   const handleSave = async () => {
-    if (!event || !date || !time) {
-      Alert.alert('Missing Info', 'Please provide event title, date, and time.');
+    if (!event) {
+      Alert.alert('Missing Info', 'Please provide event title.');
       return;
     }
 
@@ -51,8 +74,9 @@ export default function AddScheduleModal({ isOpen, onClose }: AddScheduleModalPr
     try {
       await addDoc(collection(db, 'schedules'), {
         event,
-        date,
-        time,
+        date: formatDateForDB(date),
+        time: formatTime(startTime),
+        endTime: formatTime(endTime),
         location,
         duties,
         createdAt: serverTimestamp()
@@ -60,8 +84,9 @@ export default function AddScheduleModal({ isOpen, onClose }: AddScheduleModalPr
       onClose();
       // Reset form
       setEvent('Sunday Worship Service');
-      setDate('');
-      setTime('09:00 AM');
+      setDate(new Date());
+      setStartTime(new Date(new Date().setHours(9, 0, 0, 0)));
+      setEndTime(new Date(new Date().setHours(11, 0, 0, 0)));
       setLocation('Main Sanctuary');
       setAssignments({});
     } catch (e) {
@@ -70,9 +95,15 @@ export default function AddScheduleModal({ isOpen, onClose }: AddScheduleModalPr
     }
   };
 
-  const assignMember = (userId: string) => {
+  const assignMember = (userId: string | null) => {
     if (selectingRole) {
-      setAssignments(prev => ({ ...prev, [selectingRole]: userId }));
+      if (userId === null) {
+        const newAssignments = { ...assignments };
+        delete newAssignments[selectingRole];
+        setAssignments(newAssignments);
+      } else {
+        setAssignments(prev => ({ ...prev, [selectingRole]: userId }));
+      }
       setSelectingRole(null);
     }
   };
@@ -100,21 +131,65 @@ export default function AddScheduleModal({ isOpen, onClose }: AddScheduleModalPr
             </View>
 
             <View style={styles.row}>
-              <View style={[styles.inputGroup, { flex: 1, marginRight: 12 }]}>
-                <Text style={styles.label}>Date (YYYY-MM-DD)</Text>
+              <TouchableOpacity style={[styles.inputGroup, { flex: 1 }]} onPress={() => setShowDatePicker(true)}>
+                <Text style={styles.label}>Date</Text>
                 <View style={styles.inputIconWrapper}>
                   <CalendarIcon size={16} color="#666" style={styles.inputIcon} />
-                  <TextInput style={styles.inputWithIcon} value={date} onChangeText={setDate} placeholder="2026-07-05" placeholderTextColor="#999" />
+                  <Text style={styles.inputWithIcon}>{formatDateForUI(date)}</Text>
                 </View>
-              </View>
-              <View style={[styles.inputGroup, { flex: 1 }]}>
-                <Text style={styles.label}>Time</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.row}>
+              <TouchableOpacity style={[styles.inputGroup, { flex: 1, marginRight: 12 }]} onPress={() => setShowStartTimePicker(true)}>
+                <Text style={styles.label}>Start Time</Text>
                 <View style={styles.inputIconWrapper}>
                   <Clock size={16} color="#666" style={styles.inputIcon} />
-                  <TextInput style={styles.inputWithIcon} value={time} onChangeText={setTime} placeholder="09:00 AM" placeholderTextColor="#999" />
+                  <Text style={styles.inputWithIcon}>{formatTime(startTime)}</Text>
                 </View>
-              </View>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.inputGroup, { flex: 1 }]} onPress={() => setShowEndTimePicker(true)}>
+                <Text style={styles.label}>End Time</Text>
+                <View style={styles.inputIconWrapper}>
+                  <Clock size={16} color="#666" style={styles.inputIcon} />
+                  <Text style={styles.inputWithIcon}>{formatTime(endTime)}</Text>
+                </View>
+              </TouchableOpacity>
             </View>
+
+            {showDatePicker && (
+              <DateTimePicker
+                value={date}
+                mode="date"
+                display="default"
+                onChange={(e, selectedDate) => {
+                  setShowDatePicker(Platform.OS === 'ios');
+                  if (selectedDate) setDate(selectedDate);
+                }}
+              />
+            )}
+            {showStartTimePicker && (
+              <DateTimePicker
+                value={startTime}
+                mode="time"
+                display="default"
+                onChange={(e, selectedTime) => {
+                  setShowStartTimePicker(Platform.OS === 'ios');
+                  if (selectedTime) setStartTime(selectedTime);
+                }}
+              />
+            )}
+            {showEndTimePicker && (
+              <DateTimePicker
+                value={endTime}
+                mode="time"
+                display="default"
+                onChange={(e, selectedTime) => {
+                  setShowEndTimePicker(Platform.OS === 'ios');
+                  if (selectedTime) setEndTime(selectedTime);
+                }}
+              />
+            )}
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Location</Text>
@@ -164,6 +239,10 @@ export default function AddScheduleModal({ isOpen, onClose }: AddScheduleModalPr
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.selectionList}>
+              <TouchableOpacity style={styles.memberItem} onPress={() => assignMember(null)}>
+                <Text style={[styles.memberName, { color: '#EF4444' }]}>Unassign / Clear Role</Text>
+                <Text style={styles.memberRole}>Remove assigned member</Text>
+              </TouchableOpacity>
               {members.map(m => (
                 <TouchableOpacity key={m.id} style={styles.memberItem} onPress={() => assignMember(m.id)}>
                   <Text style={styles.memberName}>{m.name}</Text>
