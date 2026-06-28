@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { 
   Search, CheckCircle, X, Users, CalendarDays, 
-  UserPlus, Trash2, Clock, ShieldAlert 
+  UserPlus, Trash2, Clock, ShieldAlert, ChevronRight 
 } from 'lucide-react-native';
 import { db } from '../../firebase';
 import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
@@ -24,6 +24,34 @@ export default function AttendanceTab({ members, showStaffFeatures }: Attendance
   const [filterDate, setFilterDate] = useState(getTodayStr());
   const [filteredScannerCheckins, setFilteredScannerCheckins] = useState<any[]>([]);
   const [searchCheckedInQuery, setSearchCheckedInQuery] = useState('');
+
+  // Calendar State for Date Picker
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [calendarViewDate, setCalendarViewDate] = useState(new Date());
+
+  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const dayNames = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+  const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
+  const getFirstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
+  
+  const formatLocal = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  const openCalendar = () => {
+    if (filterDate) {
+      const [y, m, d] = filterDate.split('-');
+      setCalendarViewDate(new Date(Number(y), Number(m) - 1, Number(d)));
+    } else {
+      setCalendarViewDate(new Date());
+    }
+    setIsCalendarOpen(true);
+  };
+  const closeCalendar = () => setIsCalendarOpen(false);
 
   // Modals state
   const [isManualCheckinOpen, setIsManualCheckinOpen] = useState(false);
@@ -161,11 +189,11 @@ export default function AttendanceTab({ members, showStaffFeatures }: Attendance
         <View style={styles.headerActions}>
           <TouchableOpacity 
             style={styles.actionBtn}
-            onPress={() => setFilterDate(isToday ? '2023-01-01' : getTodayStr())} // Simple toggle for now
+            onPress={openCalendar}
           >
             <CalendarDays size={16} color="#FF6596" />
             <Text style={styles.actionBtnText}>
-              {isToday ? 'Today' : filterDate}
+              {filterDate ? new Date(Number(filterDate.split('-')[0]), Number(filterDate.split('-')[1])-1, Number(filterDate.split('-')[2])).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Today'}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity 
@@ -218,6 +246,70 @@ export default function AttendanceTab({ members, showStaffFeatures }: Attendance
           </View>
         )}
       </View>
+
+      {/* Calendar Modal */}
+      <Modal visible={isCalendarOpen} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.dragHandle} />
+            
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Date</Text>
+              <TouchableOpacity onPress={closeCalendar} style={styles.closeBtn}>
+                <X size={20} color="#1a1a1a" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.calendarMonthRow}>
+              <TouchableOpacity onPress={() => setCalendarViewDate(new Date(calendarViewDate.getFullYear(), calendarViewDate.getMonth() - 1, 1))} style={styles.calendarArrowBtn}>
+                <ChevronRight size={20} color="#1a1a1a" style={{ transform: [{ rotate: '180deg' }] }} />
+              </TouchableOpacity>
+              <Text style={styles.calendarMonthText}>
+                {monthNames[calendarViewDate.getMonth()]} {calendarViewDate.getFullYear()}
+              </Text>
+              <TouchableOpacity onPress={() => setCalendarViewDate(new Date(calendarViewDate.getFullYear(), calendarViewDate.getMonth() + 1, 1))} style={styles.calendarArrowBtn}>
+                <ChevronRight size={20} color="#1a1a1a" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.calendarDaysRow}>
+              {dayNames.map(d => (
+                <Text key={d} style={styles.calendarDayName}>{d}</Text>
+              ))}
+            </View>
+
+            <View style={styles.calendarGrid}>
+              {Array.from({ length: getFirstDayOfMonth(calendarViewDate.getFullYear(), calendarViewDate.getMonth()) }).map((_, i) => (
+                <View key={`empty-${i}`} style={styles.calendarCell} />
+              ))}
+              {Array.from({ length: getDaysInMonth(calendarViewDate.getFullYear(), calendarViewDate.getMonth()) }).map((_, i) => {
+                const d = i + 1;
+                const dateStr = formatLocal(new Date(calendarViewDate.getFullYear(), calendarViewDate.getMonth(), d));
+                const isSelected = filterDate === dateStr;
+                const isToday = dateStr === formatLocal(new Date());
+                
+                return (
+                  <TouchableOpacity 
+                    key={d} 
+                    onPress={() => { setFilterDate(dateStr); closeCalendar(); }}
+                    style={[
+                      styles.calendarCell,
+                      isSelected ? styles.calendarCellSelected : isToday ? styles.calendarCellToday : null
+                    ]}
+                  >
+                    <Text style={[
+                      styles.calendarCellText,
+                      isSelected ? styles.calendarCellTextSelected : isToday ? styles.calendarCellTextToday : null
+                    ]}>
+                      {d}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Manual Check-in Modal */}
       <Modal visible={isManualCheckinOpen} animationType="slide" transparent>
@@ -388,4 +480,16 @@ const styles = StyleSheet.create({
   secondaryBtnText: { fontSize: 15, fontWeight: '700', color: '#1a1a1a' },
   dangerBtn: { width: '100%', padding: 16, borderRadius: 16, backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FEE2E2', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   dangerBtnText: { fontSize: 15, fontWeight: '800', color: '#EF4444' },
+  calendarMonthRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
+  calendarArrowBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#e1e4e8', alignItems: 'center', justifyContent: 'center' },
+  calendarMonthText: { fontSize: 18, fontWeight: '800', color: '#1a1a1a' },
+  calendarDaysRow: { flexDirection: 'row', marginBottom: 16 },
+  calendarDayName: { flex: 1, textAlign: 'center', fontSize: 13, fontWeight: '800', color: '#888' },
+  calendarGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+  calendarCell: { width: '14.28%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center' },
+  calendarCellSelected: { backgroundColor: '#FF6596', borderRadius: 20, shadowColor: '#FF6596', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
+  calendarCellToday: { backgroundColor: '#FFE8F0', borderRadius: 20, borderWidth: 1.5, borderColor: '#FF6596' },
+  calendarCellText: { fontSize: 15, fontWeight: '600', color: '#1a1a1a' },
+  calendarCellTextSelected: { color: '#fff', fontWeight: '800' },
+  calendarCellTextToday: { color: '#FF6596', fontWeight: '800' },
 });

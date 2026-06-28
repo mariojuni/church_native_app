@@ -28,6 +28,14 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ],
       "expo-router",
       "@react-native-google-signin/google-signin",
       [
@@ -41,7 +49,8 @@
         }
       ],
       "expo-sqlite",
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      "expo-build-properties"
     ],
     "experiments": {
       "typedRoutes": true,

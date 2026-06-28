@@ -119,8 +119,15 @@ export default function HomeScreen() {
         {upcomingDuty && upcomingDutyDate && (
           <View style={styles.dutyCard}>
             <View style={styles.dutyHeader}>
-              <Crown size={16} color="#007AFF" />
-              <Text style={styles.dutyTitle}>Ministerial Update</Text>
+              <View style={styles.dutyHeaderLeft}>
+                <Crown size={16} color="#FF6596" />
+                <Text style={styles.dutyTitle}>Ministerial Update</Text>
+              </View>
+              <View style={styles.dutyDateBadge}>
+                <Text style={styles.dutyDateText}>
+                  {new Date(`${upcomingDutyDate}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </Text>
+              </View>
             </View>
             <Text style={styles.dutyText}>
               Thank you for your dedicated ministry, {displayName}. You are scheduled for 
@@ -217,9 +224,12 @@ const styles = StyleSheet.create({
   title: { fontSize: 28, fontWeight: 'bold', color: '#1a1a1a' },
   avatar: { width: 48, height: 48, borderRadius: 24 },
   scrollContent: { padding: 24, paddingTop: 12, paddingBottom: 100 },
-  dutyCard: { backgroundColor: '#fff', padding: 16, borderRadius: 16, marginBottom: 16, borderWidth: 1, borderColor: '#e1e4e8' },
-  dutyHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 8 },
-  dutyTitle: { fontSize: 14, fontWeight: 'bold', color: '#1a1a1a' },
+  dutyCard: { backgroundColor: '#fff', padding: 16, borderRadius: 16, marginBottom: 16, borderWidth: 1, borderColor: '#FFE8F0', borderLeftWidth: 4, borderLeftColor: '#FF6596', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
+  dutyHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  dutyHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  dutyTitle: { fontSize: 14, fontWeight: '800', color: '#1a1a1a' },
+  dutyDateBadge: { backgroundColor: '#FFE8F0', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  dutyDateText: { fontSize: 11, fontWeight: '800', color: '#FF6596' },
   dutyText: { fontSize: 13, color: '#666', lineHeight: 20 },
   dutyHighlight: { color: '#FF6596', fontWeight: 'bold' },
   heroCard: { padding: 24, borderRadius: 24, marginBottom: 24, overflow: 'hidden' },
