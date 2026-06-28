@@ -63,7 +63,7 @@ export default function DiscoverVersionsScreen() {
         />
       </View>
 
-      <TouchableOpacity onPress={() => router.push('/version-manager/language')} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, marginHorizontal: 16, marginBottom: 8, backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#f0f0f0' }} activeOpacity={0.7}>
+      <TouchableOpacity onPress={() => router.push('/version-manager/language')} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, marginHorizontal: 16, marginBottom: 8, backgroundColor: '#fff' }} activeOpacity={0.7}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <Globe size={18} color="#1a1a1a" />
           <Text style={{ fontSize: 15, fontWeight: '600', color: '#1a1a1a' }}>{selectedLanguage.name}</Text>
@@ -72,6 +72,7 @@ export default function DiscoverVersionsScreen() {
               <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#666' }}>{selectedLanguage.biblesCount}</Text>
             </View>
           )}
+          <ChevronRight size={16} color="#999" />
         </View>
       </TouchableOpacity>
 
