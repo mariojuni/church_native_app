@@ -178,20 +178,7 @@ export default function HomeScreen() {
               on {upcomingEvent.event || 'this Sunday'}.
             </Text>
 
-            <View style={styles.rsvpRow}>
-              <TouchableOpacity style={[styles.rsvpBtn, dutyStatus === 'going' && styles.rsvpGoing]} onPress={() => handleRsvp('going')}>
-                <CheckCircle2 size={16} color={dutyStatus === 'going' ? '#fff' : '#4ADE80'} />
-                <Text style={[styles.rsvpText, dutyStatus === 'going' && styles.rsvpTextActive]}>Going</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.rsvpBtn, dutyStatus === 'maybe' && styles.rsvpMaybe]} onPress={() => handleRsvp('maybe')}>
-                <HelpCircle size={16} color={dutyStatus === 'maybe' ? '#fff' : '#F59E0B'} />
-                <Text style={[styles.rsvpText, dutyStatus === 'maybe' && styles.rsvpTextActive]}>Maybe</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.rsvpBtn, dutyStatus === 'not_going' && styles.rsvpNotGoing]} onPress={() => handleRsvp('not_going')}>
-                <XCircle size={16} color={dutyStatus === 'not_going' ? '#fff' : '#EF4444'} />
-                <Text style={[styles.rsvpText, dutyStatus === 'not_going' && styles.rsvpTextActive]}>Not Going</Text>
-              </TouchableOpacity>
-            </View>
+
           </View>
         )}
 
@@ -209,10 +196,31 @@ export default function HomeScreen() {
                 <Crown size={12} color="#fff" />
               </View>
               <Text style={styles.heroTitle}>
-                {new Date(`${upcomingEvent.date}T00:00:00`).toLocaleDateString('en-US', { weekday: 'long' })} {upcomingEvent.time}{'\n'}
-                {upcomingEvent.event}
+                {new Date(`${upcomingEvent.date}T00:00:00`).toLocaleDateString('en-US', { weekday: 'long' })}
               </Text>
-              <Text style={styles.heroSub}>{isStaff ? 'Tap to view attendance and check-ins' : 'Join us for worship'}</Text>
+              <Text style={styles.heroEventName}>{upcomingEvent.event || 'Sunday Worship Service'}</Text>
+              <Text style={styles.heroEventDetails}>
+                {upcomingEvent.time}{upcomingEvent.location ? ` • ${upcomingEvent.location}` : ''}
+              </Text>
+              {upcomingDuty && (
+                <View style={styles.heroRsvpRow}>
+                  <TouchableOpacity style={[styles.heroRsvpBtn, dutyStatus === 'going' && styles.rsvpGoing]} onPress={() => handleRsvp('going')}>
+                    <CheckCircle2 size={16} color="#fff" />
+                    <Text style={styles.heroRsvpText}>Going</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.heroRsvpBtn, dutyStatus === 'maybe' && styles.rsvpMaybe]} onPress={() => handleRsvp('maybe')}>
+                    <HelpCircle size={16} color="#fff" />
+                    <Text style={styles.heroRsvpText}>Maybe</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.heroRsvpBtn, dutyStatus === 'not_going' && styles.rsvpNotGoing]} onPress={() => handleRsvp('not_going')}>
+                    <XCircle size={16} color="#fff" />
+                    <Text style={styles.heroRsvpText}>Not Going</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+              {!upcomingDuty && (
+                <Text style={[styles.heroSub, { marginTop: 16 }]}>{isStaff ? 'Tap to view attendance and check-ins' : 'Join us for worship'}</Text>
+              )}
             </LinearGradient>
           </TouchableOpacity>
         ) : (
@@ -321,7 +329,12 @@ const styles = StyleSheet.create({
   heroCard: { padding: 24, borderRadius: 24, marginBottom: 24, overflow: 'hidden' },
   liveBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.2)', alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, marginBottom: 16, gap: 4 },
   liveText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
-  heroTitle: { color: '#fff', fontSize: 24, fontWeight: 'bold', marginBottom: 8 },
+  heroTitle: { color: '#fff', fontSize: 32, fontWeight: 'bold', marginBottom: 4 },
+  heroEventName: { color: '#fff', fontSize: 18, fontWeight: '600', marginBottom: 4 },
+  heroEventDetails: { color: 'rgba(255,255,255,0.9)', fontSize: 14 },
+  heroRsvpRow: { flexDirection: 'row', gap: 8, marginTop: 16 },
+  heroRsvpBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, gap: 4 },
+  heroRsvpText: { fontSize: 12, fontWeight: '700', color: '#fff' },
   heroSub: { color: 'rgba(255,255,255,0.8)', fontSize: 14 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 32 },
   gridItem: { width: '22%', alignItems: 'center' },
