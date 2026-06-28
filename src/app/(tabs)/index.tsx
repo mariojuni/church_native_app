@@ -58,9 +58,8 @@ export default function HomeScreen() {
         .sort((a, b) => a.date.localeCompare(b.date));
 
       if (upcoming.length > 0) {
-        const nextDate = upcoming[0].date;
-        const eventsForNextDate = upcoming.filter(s => s.date === nextDate);
-        setUpcomingEvents(eventsForNextDate);
+        // Show up to 5 upcoming events in the carousel, closest first
+        setUpcomingEvents(upcoming.slice(0, 5));
       } else {
         setUpcomingEvents([]);
       }
