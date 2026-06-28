@@ -271,7 +271,7 @@ export default function AttendanceTab({ members, showStaffFeatures }: Attendance
 
           <View style={styles.calendarGrid}>
             {Array.from({ length: getFirstDayOfMonth(calendarViewDate.getFullYear(), calendarViewDate.getMonth()) }).map((_, i) => (
-              <View key={`empty-${i}`} style={styles.calendarCell} />
+              <View key={`empty-${i}`} style={styles.calendarCellContainer} />
             ))}
             {Array.from({ length: getDaysInMonth(calendarViewDate.getFullYear(), calendarViewDate.getMonth()) }).map((_, i) => {
               const d = i + 1;
@@ -280,21 +280,22 @@ export default function AttendanceTab({ members, showStaffFeatures }: Attendance
               const isToday = dateStr === formatLocal(new Date());
               
               return (
-                <TouchableOpacity 
-                  key={d} 
-                  onPress={() => { setFilterDate(dateStr); closeCalendar(); }}
-                  style={[
-                    styles.calendarCell,
-                    isSelected ? styles.calendarCellSelected : isToday ? styles.calendarCellToday : null
-                  ]}
-                >
-                  <Text style={[
-                    styles.calendarCellText,
-                    isSelected ? styles.calendarCellTextSelected : isToday ? styles.calendarCellTextToday : null
-                  ]}>
-                    {d}
-                  </Text>
-                </TouchableOpacity>
+                <View key={d} style={styles.calendarCellContainer}>
+                  <TouchableOpacity 
+                    onPress={() => { setFilterDate(dateStr); closeCalendar(); }}
+                    style={[
+                      styles.calendarCell,
+                      isSelected ? styles.calendarCellSelected : isToday ? styles.calendarCellToday : null
+                    ]}
+                  >
+                    <Text style={[
+                      styles.calendarCellText,
+                      isSelected ? styles.calendarCellTextSelected : isToday ? styles.calendarCellTextToday : null
+                    ]}>
+                      {d}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               );
             })}
           </View>
@@ -460,10 +461,11 @@ const styles = StyleSheet.create({
   calendarMonthText: { fontSize: 18, fontWeight: '800', color: '#1a1a1a' },
   calendarDaysRow: { flexDirection: 'row', marginBottom: 16 },
   calendarDayName: { flex: 1, textAlign: 'center', fontSize: 13, fontWeight: '800', color: '#888' },
-  calendarGrid: { flexDirection: 'row', flexWrap: 'wrap' },
-  calendarCell: { width: '14.28%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center' },
-  calendarCellSelected: { backgroundColor: '#FF6596', borderRadius: 20, shadowColor: '#FF6596', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
-  calendarCellToday: { backgroundColor: '#FFE8F0', borderRadius: 20, borderWidth: 1.5, borderColor: '#FF6596' },
+  calendarGrid: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 12 },
+  calendarCellContainer: { width: '14.28%', alignItems: 'center', justifyContent: 'center' },
+  calendarCell: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  calendarCellSelected: { backgroundColor: '#FF6596', shadowColor: '#FF6596', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
+  calendarCellToday: { backgroundColor: '#FFE8F0', borderWidth: 1.5, borderColor: '#FF6596' },
   calendarCellText: { fontSize: 15, fontWeight: '600', color: '#1a1a1a' },
   calendarCellTextSelected: { color: '#fff', fontWeight: '800' },
   calendarCellTextToday: { color: '#FF6596', fontWeight: '800' },

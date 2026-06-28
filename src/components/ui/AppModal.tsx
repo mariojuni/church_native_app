@@ -1,5 +1,6 @@
 import React, { ReactNode, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, SafeAreaView, StyleProp, ViewStyle, TouchableWithoutFeedback, Animated } from 'react-native';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, StyleProp, ViewStyle, TouchableWithoutFeedback, Animated } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
 
 interface AppModalProps {
@@ -15,6 +16,7 @@ interface AppModalProps {
 
 export default function AppModal({ isOpen, onClose, title, children, containerStyle, headerLeft, headerRight, headerTitleAlign = 'center' }: AppModalProps) {
   const slideAnim = useRef(new Animated.Value(500)).current;
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (isOpen) {
@@ -57,9 +59,9 @@ export default function AppModal({ isOpen, onClose, title, children, containerSt
           </View>
 
           {/* Content */}
-          <SafeAreaView style={[styles.contentContainer, containerStyle]}>
+          <View style={[styles.contentContainer, containerStyle, { paddingBottom: Math.max(insets.bottom, 16) }]}>
             {children}
-          </SafeAreaView>
+          </View>
         </Animated.View>
       </View>
     </Modal>
