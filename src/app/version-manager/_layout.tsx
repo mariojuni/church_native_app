@@ -15,8 +15,7 @@ export default function VersionManagerLayout() {
           <Stack
             screenOptions={{
               headerShown: false,
-              contentStyle: { backgroundColor: '#fff' },
-              animation: 'slide_from_right'
+              contentStyle: { backgroundColor: '#fff' }
             }}
           >
             <Stack.Screen name="index" />
