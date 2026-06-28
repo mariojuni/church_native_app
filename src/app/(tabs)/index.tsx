@@ -204,6 +204,14 @@ export default function HomeScreen() {
                     dutyRole = myDuty.role;
                     dutyStatus = myDuty.status;
                   }
+                } else {
+                  let duties = [];
+                  if (event.openingPrayer === currentUser?.uid) duties.push('Opening Prayer');
+                  if (event.tithesOfferingPrayer === currentUser?.uid) duties.push('Tithes & Offering Prayer');
+                  if (event.scriptureReading === currentUser?.uid) duties.push('Scripture Reading');
+                  if (event.praiseWorship === currentUser?.uid) duties.push('Praise & Worship');
+                  if (event.ushers && event.ushers.includes(currentUser?.uid)) duties.push('Usher');
+                  if (duties.length > 0) dutyRole = duties.join(', ');
                 }
 
                 return (
