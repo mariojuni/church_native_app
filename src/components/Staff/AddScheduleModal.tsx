@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Modal, KeyboardAvoidingView, Platform, Alert } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { X, Calendar as CalendarIcon, Clock, Users, ChevronDown } from 'lucide-react-native';
+import CustomDatePicker from '../CustomDatePicker';
+import CustomTimePicker from '../CustomTimePicker';
 import { db } from '../../firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useMemberStore } from '../../store/useMemberStore';
@@ -55,36 +56,7 @@ export default function AddScheduleModal({ isOpen, onClose }: AddScheduleModalPr
     return `${String(h).padStart(2, '0')}:${m} ${ampm}`;
   };
 
-  const renderPicker = (
-    show: boolean,
-    value: Date,
-    mode: 'date' | 'time',
-    onValueChange: (e: any, selected?: Date) => void,
-    onClose: () => void
-  ) => {
-    if (!show) return null;
-    return (
-      <View style={{ backgroundColor: '#fff', borderRadius: 12, marginTop: 8, padding: 8, borderWidth: 1, borderColor: '#f0f0f0' }}>
-        {Platform.OS === 'ios' && (
-          <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 8 }}>
-            <TouchableOpacity onPress={onClose} style={{ padding: 8 }}>
-              <Text style={{ color: '#FF6596', fontWeight: 'bold', fontSize: 16 }}>Done</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-        <DateTimePicker
-          value={value}
-          mode={mode}
-          display={Platform.OS === 'ios' ? (mode === 'date' ? 'inline' : 'spinner') : 'default'}
-          onChange={(e, date) => {
-            if (Platform.OS === 'android') onClose();
-            if (date) onValueChange(e, date);
-          }}
-          style={Platform.OS === 'ios' ? { width: '100%', height: mode === 'date' ? 320 : 200 } : {}}
-        />
-      </View>
-    );
-  };
+
 
   const handleSave = async () => {
     if (!event) {
@@ -188,29 +160,35 @@ export default function AddScheduleModal({ isOpen, onClose }: AddScheduleModalPr
               </TouchableOpacity>
             </View>
 
-            {renderPicker(
-              showDatePicker, 
-              date, 
-              'date', 
-              (e, selectedDate) => { if (selectedDate) setDate(selectedDate); },
-              () => setShowDatePicker(false)
-            )}
+            <CustomDatePicker
+              visible={showDatePicker}
+              date={date}
+              onConfirm={(selectedDate) => {
+                setDate(selectedDate);
+                setShowDatePicker(false);
+              }}
+              onCancel={() => setShowDatePicker(false)}
+            />
             
-            {renderPicker(
-              showStartTimePicker, 
-              startTime, 
-              'time', 
-              (e, selectedTime) => { if (selectedTime) setStartTime(selectedTime); },
-              () => setShowStartTimePicker(false)
-            )}
+            <CustomTimePicker
+              visible={showStartTimePicker}
+              time={startTime}
+              onConfirm={(selectedTime) => {
+                setStartTime(selectedTime);
+                setShowStartTimePicker(false);
+              }}
+              onCancel={() => setShowStartTimePicker(false)}
+            />
 
-            {renderPicker(
-              showEndTimePicker, 
-              endTime, 
-              'time', 
-              (e, selectedTime) => { if (selectedTime) setEndTime(selectedTime); },
-              () => setShowEndTimePicker(false)
-            )}
+            <CustomTimePicker
+              visible={showEndTimePicker}
+              time={endTime}
+              onConfirm={(selectedTime) => {
+                setEndTime(selectedTime);
+                setShowEndTimePicker(false);
+              }}
+              onCancel={() => setShowEndTimePicker(false)}
+            />
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Location</Text>
