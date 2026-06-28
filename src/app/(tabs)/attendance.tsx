@@ -8,6 +8,7 @@ import { db } from '../../firebase';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { useRouter } from 'expo-router';
 import AttendanceTab from '../../components/Staff/AttendanceTab';
+import ScheduleTab from '../../components/Staff/ScheduleTab';
 
 export default function AttendanceScreen() {
   const { members } = useMemberStore();
@@ -113,10 +114,7 @@ export default function AttendanceScreen() {
         )}
 
         {activeTab === 'schedule' && (
-          <View style={styles.placeholderCard}>
-            <Text style={styles.placeholderTitle}>Service Schedule</Text>
-            <Text style={styles.placeholderText}>Upcoming duty schedules will be listed here.</Text>
-          </View>
+          <ScheduleTab />
         )}
       </ScrollView>
     </SafeAreaView>

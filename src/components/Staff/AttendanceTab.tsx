@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { 
   Search, CheckCircle, X, Users, CalendarDays, 
-  UserPlus, Trash2, Clock, ShieldAlert, ChevronRight 
+  UserPlus, Trash2, Clock, ShieldAlert, ChevronRight, ChevronLeft
 } from 'lucide-react-native';
 import { db } from '../../firebase';
 import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
@@ -220,7 +220,7 @@ export default function AttendanceTab({ members, showStaffFeatures }: Attendance
                 activeOpacity={0.7}
               >
                 <Image 
-                  source={{ uri: memberInfo.avatar || 'https://i.pravatar.cc/150' }} 
+                  source={{ uri: memberInfo.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(c.name || 'User')}&background=f0f0f0&color=999&size=150` }} 
                   style={styles.avatar} 
                 />
                 <View style={styles.cardContent}>
@@ -253,7 +253,7 @@ export default function AttendanceTab({ members, showStaffFeatures }: Attendance
         <View style={{ paddingHorizontal: 24, paddingVertical: 16 }}>
           <View style={styles.calendarMonthRow}>
             <TouchableOpacity onPress={() => setCalendarViewDate(new Date(calendarViewDate.getFullYear(), calendarViewDate.getMonth() - 1, 1))} style={styles.calendarArrowBtn}>
-              <ChevronRight size={20} color="#1a1a1a" style={{ transform: [{ rotate: '180deg' }] }} />
+              <ChevronLeft size={20} color="#1a1a1a" />
             </TouchableOpacity>
             <Text style={styles.calendarMonthText}>
               {monthNames[calendarViewDate.getMonth()]} {calendarViewDate.getFullYear()}
@@ -328,7 +328,7 @@ export default function AttendanceTab({ members, showStaffFeatures }: Attendance
               matchingUncheckedMembers.map(m => (
                 <View key={m.id} style={styles.modalListItem}>
                   <View style={styles.modalListItemLeft}>
-                    <Image source={{ uri: m.avatar || 'https://i.pravatar.cc/150' }} style={styles.modalAvatar} />
+                    <Image source={{ uri: m.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name || 'User')}&background=f0f0f0&color=999&size=150` }} style={styles.modalAvatar} />
                     <View>
                       <Text style={styles.modalMemberName}>{m.name}</Text>
                       <Text style={styles.modalMemberRole}>{m.role}</Text>
@@ -357,39 +357,53 @@ export default function AttendanceTab({ members, showStaffFeatures }: Attendance
       {/* Details Modal */}
       <AppModal isOpen={!!selectedCheckinMember} onClose={() => setSelectedCheckinMember(null)} title="Check-in Details">
         {selectedCheckinMember && (
-          <View style={{ paddingHorizontal: 24, paddingVertical: 16, alignItems: 'center' }}>
-            <Image 
-              source={{ uri: selectedCheckinMember.memberInfo?.avatar || 'https://i.pravatar.cc/150' }} 
-              style={styles.detailsAvatar} 
-            />
-            <Text style={styles.detailsName}>{selectedCheckinMember.name}</Text>
-            
-            <View style={[styles.roleBadge, selectedCheckinMember.status === 'new' ? styles.roleBadgeNew : null, { marginBottom: 16 }]}>
-              <Text style={[styles.roleText, selectedCheckinMember.status === 'new' ? styles.roleTextNew : null]}>
-                {selectedCheckinMember.role || 'Member'}
-              </Text>
+          <View style={{ paddingHorizontal: 24, paddingVertical: 16 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24 }}>
+              <Image 
+                source={{ uri: selectedCheckinMember.memberInfo?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedCheckinMember.name || 'User')}&background=f0f0f0&color=999&size=150` }} 
+                style={{ width: 64, height: 64, borderRadius: 20, marginRight: 16 }} 
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 20, fontWeight: '800', color: '#1a1a1a', marginBottom: 4 }}>{selectedCheckinMember.name}</Text>
+                <View style={[styles.roleBadge, selectedCheckinMember.status === 'new' ? styles.roleBadgeNew : null]}>
+                  <Text style={[styles.roleText, selectedCheckinMember.status === 'new' ? styles.roleTextNew : null]}>
+                    {selectedCheckinMember.role || 'Member'}
+                  </Text>
+                </View>
+              </View>
             </View>
 
-            <View style={styles.timeInfoCard}>
-              <Clock size={16} color="#666" />
-              <Text style={styles.timeInfoText}>Checked in at</Text>
-              <Text style={styles.timeInfoValue}>{formatCheckinTime(selectedCheckinMember.timestamp)}</Text>
+            <View style={{ backgroundColor: '#f8f9fb', borderRadius: 16, padding: 16, marginBottom: 32, gap: 16, borderWidth: 1, borderColor: '#f0f0f0' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Clock size={18} color="#666" />
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: '#666' }}>Time</Text>
+                </View>
+                <Text style={{ fontSize: 15, fontWeight: '800', color: '#1a1a1a' }}>{formatCheckinTime(selectedCheckinMember.timestamp)}</Text>
+              </View>
+              <View style={{ height: 1, backgroundColor: '#f0f0f0' }} />
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <CheckCircle size={18} color="#4ADE80" />
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: '#666' }}>Status</Text>
+                </View>
+                <Text style={{ fontSize: 15, fontWeight: '800', color: '#4ADE80' }}>Checked In</Text>
+              </View>
             </View>
 
-            <View style={{ width: '100%', gap: 12 }}>
+            <View style={{ gap: 12 }}>
               <TouchableOpacity 
-                style={styles.secondaryBtn}
-                onPress={() => setSelectedCheckinMember(null)}
-              >
-                <Text style={styles.secondaryBtnText}>Close</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={styles.dangerBtn}
+                style={[styles.dangerBtn, { backgroundColor: '#fff', borderColor: '#EF4444' }]}
                 onPress={() => handleDeleteCheckin(selectedCheckinMember.id)}
               >
                 <Trash2 size={18} color="#EF4444" />
                 <Text style={styles.dangerBtnText}>Undo Check-in</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.secondaryBtn}
+                onPress={() => setSelectedCheckinMember(null)}
+              >
+                <Text style={styles.secondaryBtnText}>Done</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -404,7 +418,7 @@ const styles = StyleSheet.create({
   restrictedCard: { backgroundColor: '#fff', margin: 24, padding: 32, borderRadius: 16, alignItems: 'center', borderWidth: 1, borderColor: '#FF6596', borderStyle: 'dashed' },
   restrictedTitle: { fontSize: 16, fontWeight: '700', marginTop: 16, marginBottom: 8, color: '#1a1a1a' },
   restrictedText: { fontSize: 13, color: '#666', textAlign: 'center', lineHeight: 20 },
-  searchWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 16, paddingHorizontal: 16, height: 48, marginBottom: 24, borderWidth: 1, borderColor: '#f0f0f0', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  searchWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 16, paddingHorizontal: 16, height: 48, marginBottom: 24, borderWidth: 1, borderColor: '#f0f0f0', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 15, shadowOffset: { width: 0, height: 8 }, elevation: 4 },
   searchIcon: { marginRight: 8 },
   searchInput: { flex: 1, fontSize: 15, fontWeight: '600', color: '#1a1a1a' },
   loadingSpinner: { position: 'absolute', right: 16 },
@@ -412,7 +426,7 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 18, fontWeight: '800', color: '#1a1a1a' },
   headerSubtitle: { fontSize: 13, color: '#666', fontWeight: '500' },
   headerActions: { flexDirection: 'row', gap: 8 },
-  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 15, shadowOffset: { width: 0, height: 8 }, elevation: 4 },
   actionBtnText: { fontSize: 13, fontWeight: '700', color: '#1a1a1a' },
   listContainer: { gap: 12 },
   card: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 16, borderRadius: 16, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, elevation: 1 },
