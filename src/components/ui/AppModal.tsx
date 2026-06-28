@@ -1,5 +1,5 @@
-import React, { ReactNode } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, SafeAreaView, StyleProp, ViewStyle, TouchableWithoutFeedback } from 'react-native';
+import React, { ReactNode, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, SafeAreaView, StyleProp, ViewStyle, TouchableWithoutFeedback, Animated } from 'react-native';
 import { X } from 'lucide-react-native';
 
 interface AppModalProps {
@@ -14,14 +14,28 @@ interface AppModalProps {
 }
 
 export default function AppModal({ isOpen, onClose, title, children, containerStyle, headerLeft, headerRight, headerTitleAlign = 'center' }: AppModalProps) {
+  const slideAnim = useRef(new Animated.Value(500)).current;
+
+  useEffect(() => {
+    if (isOpen) {
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      slideAnim.setValue(500); // reset when closed
+    }
+  }, [isOpen, slideAnim]);
+
   return (
-    <Modal visible={isOpen} animationType="slide" transparent={true} onRequestClose={onClose}>
+    <Modal visible={isOpen} animationType="fade" transparent={true} onRequestClose={onClose}>
       <View style={styles.overlay}>
         <TouchableWithoutFeedback onPress={onClose}>
           <View style={styles.backdrop} />
         </TouchableWithoutFeedback>
 
-        <View style={styles.sheet}>
+        <Animated.View style={[styles.sheet, { transform: [{ translateY: slideAnim }] }]}>
           <View style={styles.dragHandle} />
 
           {/* Header */}
@@ -46,7 +60,7 @@ export default function AppModal({ isOpen, onClose, title, children, containerSt
           <SafeAreaView style={[styles.contentContainer, containerStyle]}>
             {children}
           </SafeAreaView>
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );
