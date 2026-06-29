@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "skills": {
+    "detour-onboarding": {
+      "source": "software-mansion-labs/skills",
+      "sourceType": "github",
+      "skillPath": "skills/detour/detour-onboarding/SKILL.md",
+      "computedHash": "4e638bfbffc177176354ebdbe8c46f4a8952a525ee36b7e91bd850639a12b23e"
+    },
+    "expo-horizon": {
+      "source": "software-mansion-labs/skills",
+      "sourceType": "github",
+      "skillPath": "skills/expo-horizon/SKILL.md",
+      "computedHash": "e98ecd4ffcaaa16728c1826cb3b04705dc5f3282e1d6184ec0a81bb42b6a7377"
+    },
+    "fishjam": {
+      "source": "software-mansion-labs/skills",
+      "sourceType": "github",
+      "skillPath": "skills/fishjam/SKILL.md",
+      "computedHash": "d761102db0af746a1f12d2d2c1a99c4200e30251cce05243162238880cd16af1"
+    },
+    "migrate-to-detour": {
+      "source": "software-mansion-labs/skills",
+      "sourceType": "github",
+      "skillPath": "skills/detour/migrate-to-detour/SKILL.md",
+      "computedHash": "b453c53203dbd7d4484ca64c20f7bae62988dd3f9792e8deb82ed64709f62eec"
+    },
+    "radon-mcp": {
+      "source": "software-mansion-labs/skills",
+      "sourceType": "github",
+      "skillPath": "skills/radon-mcp/SKILL.md",
+      "computedHash": "aef74933f21cb992370bdb21ac99cbdc7f2da2d77e1fbbaf7fd9044f7cb41882"
+    },
+    "react-native-best-practices": {
+      "source": "software-mansion-labs/skills",
+      "sourceType": "github",
+      "skillPath": "skills/react-native-best-practices/SKILL.md",
+      "computedHash": "7eb50ff52dfda0372223262cbfe16d60db09e8f6c4487bc26da13f4c8d963d83"
+    },
+    "rnrepo": {
+      "source": "software-mansion-labs/skills",
+      "sourceType": "github",
+      "skillPath": "skills/rnrepo/SKILL.md",
+      "computedHash": "9175c0003e5a4d4c8c6e99d4f8e25c28666dcb716fa8a0e3e83662e378ed3ed7"
+    },
+    "typegpu": {
+      "source": "software-mansion-labs/skills",
+      "sourceType": "github",
+      "skillPath": "skills/typegpu/SKILL.md",
+      "computedHash": "d13ead73f47b890ea3e94e6b7f85d08412a7acf41f333da1f75341b8d5ea7b4e"
+    }
+  }
+}
