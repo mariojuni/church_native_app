@@ -1,23 +1,26 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions } from 'react-native';
+import React, { useState, useEffect, useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, Crown, Users, Calendar, CalendarDays, HeartHandshake, HandHeart, Grid, BarChart3, BookOpen, ChevronRight, Quote, CheckCircle2, HelpCircle, XCircle } from 'lucide-react-native';
+import { Crown, Users, Calendar, CalendarDays, HeartHandshake, HandHeart, Grid, CheckCircle2, HelpCircle, XCircle, Check, X, MapPin, Clock } from 'lucide-react-native';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useMemberStore } from '../../store/useMemberStore';
+import { useScheduleStore, getUpcomingSchedules, getUserMinisterialRoles, getUserRsvpStatus, updateRsvp, updateMinisterialDuty, Schedule } from '../../store/useScheduleStore';
 import { db } from '../../firebase';
-import { collection, query, orderBy, limit, onSnapshot, doc, runTransaction, where } from 'firebase/firestore';
+import { collection, query, orderBy, limit, onSnapshot, doc, runTransaction } from 'firebase/firestore';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import AppModal from '../../components/ui/AppModal';
 
 export default function HomeScreen() {
   const { userProfile, currentUser } = useAuthStore();
   const { members } = useMemberStore();
-  const isStaff = userProfile?.role?.toLowerCase() === 'staff';
+  const { schedules, initializeSchedulesListener } = useScheduleStore();
   const router = useRouter();
 
   const [latestPrayer, setLatestPrayer] = useState<any>(null);
-  const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
   const [activeSlide, setActiveSlide] = useState(0);
+  const [activeDutySlide, setActiveDutySlide] = useState(0);
+  const [selectedDutyEvent, setSelectedDutyEvent] = useState<Schedule | null>(null);
   
   const screenWidth = Dimensions.get('window').width;
   const cardWidth = screenWidth - 48;
@@ -26,6 +29,34 @@ export default function HomeScreen() {
     ? userProfile.name.split(' ')[0] 
     : (currentUser?.displayName ? currentUser.displayName.split(' ')[0] : 'User');
 
+  // ─── Initialize schedule listener ─────────────────────────────────────
+  useEffect(() => {
+    const unsubscribe = initializeSchedulesListener();
+    return () => unsubscribe();
+  }, []);
+
+  // ─── Derive upcoming events from store ────────────────────────────────
+  const upcomingEvents = useMemo(() => getUpcomingSchedules(schedules), [schedules]);
+
+  // ─── Derive user's specific upcoming duties ────────────────────────────
+  const myUpcomingDuties = useMemo(() => {
+    if (!currentUser) return [];
+    
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    return schedules
+      .filter(s => {
+        if (s.date < todayStr) return false;
+        return getUserMinisterialRoles(s, currentUser.uid) !== null;
+      })
+      .sort((a, b) => {
+        if (a.date !== b.date) return a.date.localeCompare(b.date);
+        return (a.time || '').localeCompare(b.time || '');
+      });
+  }, [schedules, currentUser]);
+
+  // ─── Prayer listener ──────────────────────────────────────────────────
   useEffect(() => {
     const q = query(collection(db, 'prayers'), orderBy('createdAt', 'desc'), limit(1));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -38,97 +69,17 @@ export default function HomeScreen() {
     return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
-    if (!currentUser) return;
-    const q = collection(db, 'schedules');
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      
-      const allSchedules = snapshot.docs.map(docSnap => {
-        const data = docSnap.data();
-        return {
-          id: docSnap.id,
-          ...data,
-          date: data.date || docSnap.id // Fallback to doc ID for old format
-        } as any;
-      });
-
-      const parseTime = (timeStr: string) => {
-        if (!timeStr) return '09:00'; // Default legacy time
-        const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
-        if (!match) return timeStr;
-        let [_, hours, minutes, modifier] = match;
-        let h = parseInt(hours, 10);
-        if (modifier.toUpperCase() === 'PM' && h < 12) h += 12;
-        if (modifier.toUpperCase() === 'AM' && h === 12) h = 0;
-        return `${h.toString().padStart(2, '0')}:${minutes}`;
-      };
-
-      const upcoming = allSchedules
-        .filter(s => {
-          const now = new Date();
-          // local date string in YYYY-MM-DD
-          const year = now.getFullYear();
-          const month = String(now.getMonth() + 1).padStart(2, '0');
-          const day = String(now.getDate()).padStart(2, '0');
-          const todayStr = `${year}-${month}-${day}`;
-          
-          if (s.date > todayStr) return true;
-          if (s.date < todayStr) return false;
-          
-          const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-          let endTimeParsed = parseTime(s.endTime || s.time);
-          
-          if (!s.endTime) {
-            // fallback: assume event lasts 2 hours
-            let h = parseInt(endTimeParsed.split(':')[0], 10) + 2;
-            if (h > 23) h = 23;
-            endTimeParsed = `${String(h).padStart(2, '0')}:${endTimeParsed.split(':')[1]}`;
-          }
-          
-          return endTimeParsed >= currentTimeStr;
-        })
-        .sort((a, b) => {
-          if (a.date !== b.date) return a.date.localeCompare(b.date);
-          return parseTime(a.time).localeCompare(parseTime(b.time));
-        });
-
-      if (upcoming.length > 0) {
-        // Show up to 5 upcoming events in the carousel, closest first
-        setUpcomingEvents(upcoming.slice(0, 5));
-      } else {
-        setUpcomingEvents([]);
-      }
-    });
-    return () => unsubscribe();
-  }, [currentUser]);
-
+  // ─── RSVP handler (writes to rsvps array, not duties) ─────────────────
   const handleRsvp = async (eventId: string, status: string) => {
-    const targetEvent = upcomingEvents.find(e => e.id === eventId);
-    if (!targetEvent || !currentUser) return;
-    
-    let updatedDuties = targetEvent.duties ? [...targetEvent.duties] : [];
-    const existingIndex = updatedDuties.findIndex((d: any) => d.userId === currentUser.uid);
-    
-    if (existingIndex >= 0) {
-      updatedDuties[existingIndex] = { ...updatedDuties[existingIndex], status };
-    } else {
-      updatedDuties.push({
-        userId: currentUser.uid,
-        role: 'Attendee',
-        status
-      });
-    }
-
+    if (!currentUser) return;
     try {
-      await runTransaction(db, async (transaction) => {
-        const docRef = doc(db, 'schedules', eventId);
-        transaction.update(docRef, { duties: updatedDuties });
-      });
+      await updateRsvp(eventId, currentUser.uid, status);
     } catch (e) {
-      console.error(e);
+      console.error('RSVP error:', e);
     }
   };
 
+  // ─── Prayer handler ───────────────────────────────────────────────────
   const handlePray = async (id: string) => {
     if (!currentUser) return;
     const docRef = doc(db, 'prayers', id);
@@ -179,77 +130,97 @@ export default function HomeScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Ministerial Duty */
-        upcomingEvents.map((event) => {
-          let dutyRole = null;
-          if (event.duties && Array.isArray(event.duties)) {
-            const myDuty = event.duties.find((d: any) => d.userId === currentUser?.uid);
-            if (myDuty) dutyRole = myDuty.role;
-          } else {
-            let duties = [];
-            if (event.openingPrayer === currentUser?.uid) duties.push('Opening Prayer');
-            if (event.tithesOfferingPrayer === currentUser?.uid) duties.push('Tithes & Offering Prayer');
-            if (event.scriptureReading === currentUser?.uid) duties.push('Scripture Reading');
-            if (event.praiseWorship === currentUser?.uid) duties.push('Praise & Worship');
-            if (event.ushers && event.ushers.includes(currentUser?.uid)) duties.push('Usher');
-            if (duties.length > 0) dutyRole = duties.join(', ');
-          }
+        {/* ─── Ministerial Duty Section ─────────────────────────────────── */}
+        {myUpcomingDuties.length > 0 && (
+          <View>
+            <ScrollView
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              style={{ marginBottom: 16 }}
+              contentContainerStyle={styles.dutyCarouselContent}
+              scrollEventThrottle={16}
+              onScroll={(e) => {
+                const slide = Math.round(e.nativeEvent.contentOffset.x / cardWidth);
+                if (slide !== activeDutySlide && slide >= 0) {
+                  setActiveDutySlide(slide);
+                }
+              }}
+            >
+              {myUpcomingDuties.map((event) => {
+                if (!currentUser) return null;
+                const dutyRole = getUserMinisterialRoles(event, currentUser.uid);
+                if (!dutyRole) return null;
+                const userDuty = event.duties?.find(
+                  (d: any) => d.userId === currentUser.uid && d.role?.toLowerCase() !== 'attendee'
+                );
+                const accepted = userDuty?.status === 'accepted' || userDuty?.status === 'accepted_dismissed';
+                const eventDate = new Date(`${event.date}T00:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
-          if (!dutyRole) return null;
+                return (
+                  <View key={`duty-${event.id}`} style={{ width: cardWidth }}>
+                    <TouchableOpacity activeOpacity={0.8} onPress={() => setSelectedDutyEvent(event)}>
+                      <View style={styles.mergedDutyCard}>
+                        {/* Top Row: Badge + Date */}
+                        <View style={styles.mergedDutyHeader}>
+                          <View style={styles.mergedDutyTag}>
+                            <Crown size={12} color="#FF6596" />
+                            <Text style={styles.mergedDutyTagText}>MINISTERIAL UPDATE</Text>
+                          </View>
+                          <View style={styles.mergedDutyDateBadge}>
+                            <Text style={styles.mergedDutyDateText}>{eventDate}</Text>
+                          </View>
+                        </View>
 
-          return (
-            <View key={`duty-${event.id}`} style={styles.dutyCard}>
-              <View style={styles.dutyHeader}>
-                <View style={styles.dutyHeaderLeft}>
-                  <Crown size={16} color="#FF6596" />
-                  <Text style={styles.dutyTitle}>Ministerial Update</Text>
-                </View>
-                <View style={styles.dutyDateBadge}>
-                  <Text style={styles.dutyDateText}>
-                    {new Date(`${event.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  </Text>
-                </View>
+                        {/* Message Body */}
+                        <Text style={styles.mergedDutyMessage} numberOfLines={3}>
+                          Thank you for your dedicated ministry, {displayName.split(' ')[0]}. You are scheduled for <Text style={styles.mergedDutyRoleText}>{dutyRole}</Text> on {event.event || 'this Sunday'}.
+                        </Text>
+
+                        {/* Action Row */}
+                        <View style={styles.mergedDutyActionRow}>
+                          {accepted ? (
+                            <View style={styles.mergedConfirmedPill}>
+                              <Check size={10} color="#16A34A" />
+                              <Text style={styles.mergedConfirmedText}>Accepted</Text>
+                            </View>
+                          ) : (
+                            <Text style={styles.tapToRespondText}>Tap to respond ➔</Text>
+                          )}
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
+            </ScrollView>
+            
+            {/* Duty Pagination Dots */}
+            {myUpcomingDuties.length > 1 && (
+              <View style={styles.paginationRow}>
+                {myUpcomingDuties.map((_, i) => (
+                  <View key={i} style={[styles.paginationDot, activeDutySlide === i && styles.paginationDotActive]} />
+                ))}
               </View>
-              <Text style={styles.dutyText}>
-                Thank you for your dedicated ministry, {displayName}. You are scheduled for 
-                <Text style={styles.dutyHighlight}> {dutyRole} </Text>
-                on {event.event || 'this Sunday'}.
-              </Text>
-            </View>
-          );
-        })}
+            )}
+          </View>
+        )}
 
-        {/* Hero Card */}
+        {/* ─── Hero Carousel ──────────────────────────────────────────── */}
         {upcomingEvents.length > 0 ? (
           <View>
             <ScrollView 
               horizontal 
               pagingEnabled 
               showsHorizontalScrollIndicator={false}
-              onMomentumScrollEnd={(event) => {
-                const slide = Math.round(event.nativeEvent.contentOffset.x / cardWidth);
+              onMomentumScrollEnd={(e) => {
+                const slide = Math.round(e.nativeEvent.contentOffset.x / cardWidth);
                 setActiveSlide(slide);
               }}
               style={styles.heroScroll}
             >
               {upcomingEvents.map((event) => {
-                let dutyRole = null;
-                let dutyStatus = null;
-                if (event.duties && Array.isArray(event.duties)) {
-                  const myDuty = event.duties.find((d: any) => d.userId === currentUser?.uid);
-                  if (myDuty) {
-                    dutyRole = myDuty.role;
-                    dutyStatus = myDuty.status;
-                  }
-                } else {
-                  let duties = [];
-                  if (event.openingPrayer === currentUser?.uid) duties.push('Opening Prayer');
-                  if (event.tithesOfferingPrayer === currentUser?.uid) duties.push('Tithes & Offering Prayer');
-                  if (event.scriptureReading === currentUser?.uid) duties.push('Scripture Reading');
-                  if (event.praiseWorship === currentUser?.uid) duties.push('Praise & Worship');
-                  if (event.ushers && event.ushers.includes(currentUser?.uid)) duties.push('Usher');
-                  if (duties.length > 0) dutyRole = duties.join(', ');
-                }
+                const rsvpStatus = currentUser ? getUserRsvpStatus(event, currentUser.uid) : null;
 
                 return (
                   <View key={`hero-${event.id}`} style={{ width: cardWidth }}>
@@ -272,17 +243,17 @@ export default function HomeScreen() {
                           {event.time || '9:00 AM'} • {event.location || 'Main Sanctuary'}
                         </Text>
                         <View style={styles.heroRsvpRow}>
-                          <TouchableOpacity style={[styles.heroRsvpBtn, dutyStatus === 'going' && styles.rsvpActiveBtn]} onPress={() => handleRsvp(event.id, 'going')}>
-                            <CheckCircle2 size={16} color={dutyStatus === 'going' ? '#FF6596' : '#fff'} />
-                            <Text style={[styles.heroRsvpText, dutyStatus === 'going' && styles.rsvpActiveText]}>Going</Text>
+                          <TouchableOpacity style={[styles.heroRsvpBtn, rsvpStatus === 'going' && styles.rsvpActiveBtn]} onPress={() => handleRsvp(event.id, 'going')}>
+                            <CheckCircle2 size={16} color={rsvpStatus === 'going' ? '#FF6596' : '#fff'} />
+                            <Text style={[styles.heroRsvpText, rsvpStatus === 'going' && styles.rsvpActiveText]}>Going</Text>
                           </TouchableOpacity>
-                          <TouchableOpacity style={[styles.heroRsvpBtn, dutyStatus === 'maybe' && styles.rsvpActiveBtn]} onPress={() => handleRsvp(event.id, 'maybe')}>
-                            <HelpCircle size={16} color={dutyStatus === 'maybe' ? '#F59E0B' : '#fff'} />
-                            <Text style={[styles.heroRsvpText, dutyStatus === 'maybe' && { color: '#F59E0B' }]}>Maybe</Text>
+                          <TouchableOpacity style={[styles.heroRsvpBtn, rsvpStatus === 'maybe' && styles.rsvpActiveBtn]} onPress={() => handleRsvp(event.id, 'maybe')}>
+                            <HelpCircle size={16} color={rsvpStatus === 'maybe' ? '#F59E0B' : '#fff'} />
+                            <Text style={[styles.heroRsvpText, rsvpStatus === 'maybe' && { color: '#F59E0B' }]}>Maybe</Text>
                           </TouchableOpacity>
-                          <TouchableOpacity style={[styles.heroRsvpBtn, dutyStatus === 'not_going' && styles.rsvpActiveBtn]} onPress={() => handleRsvp(event.id, 'not_going')}>
-                            <XCircle size={16} color={dutyStatus === 'not_going' ? '#EF4444' : '#fff'} />
-                            <Text style={[styles.heroRsvpText, dutyStatus === 'not_going' && { color: '#EF4444' }]}>Not Going</Text>
+                          <TouchableOpacity style={[styles.heroRsvpBtn, rsvpStatus === 'not_going' && styles.rsvpActiveBtn]} onPress={() => handleRsvp(event.id, 'not_going')}>
+                            <XCircle size={16} color={rsvpStatus === 'not_going' ? '#EF4444' : '#fff'} />
+                            <Text style={[styles.heroRsvpText, rsvpStatus === 'not_going' && { color: '#EF4444' }]}>Not Going</Text>
                           </TouchableOpacity>
                         </View>
                       </LinearGradient>
@@ -320,7 +291,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Action Grid */}
+        {/* ─── Action Grid ────────────────────────────────────────────── */}
         <View style={styles.grid}>
           <TouchableOpacity style={styles.gridItem}>
             <View style={styles.iconWrapper}>
@@ -348,7 +319,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Prayer Wall */}
+        {/* ─── Prayer Wall ────────────────────────────────────────────── */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Prayer Wall</Text>
           <TouchableOpacity onPress={() => router.push('/(tabs)/prayer')}>
@@ -379,6 +350,73 @@ export default function HomeScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* Ministerial Duty Details Modal */}
+      {selectedDutyEvent && currentUser && (
+        <AppModal
+          isOpen={!!selectedDutyEvent}
+          onClose={() => setSelectedDutyEvent(null)}
+          title="Ministerial Duty"
+          headerLeft={<Crown size={22} color="#FF6596" />}
+          headerTitleAlign="center"
+          containerStyle={{ paddingHorizontal: 24, paddingBottom: 32 }}
+        >
+          <Text style={styles.dutyModalEventName}>{selectedDutyEvent.event || 'Sunday Worship Service'}</Text>
+          
+          <Text style={{ fontSize: 14, color: '#4B5563', textAlign: 'center', marginBottom: 20, paddingHorizontal: 10 }}>
+            You have been scheduled for the role of <Text style={{ fontWeight: 'bold', color: '#FF6596' }}>{getUserMinisterialRoles(selectedDutyEvent, currentUser.uid)}</Text>. Please accept or decline the duty below so we can notify the staff.
+          </Text>
+
+          <View style={styles.dutyModalDetails}>
+            <View style={styles.dutyModalRow}>
+              <Calendar size={16} color="#666" />
+              <Text style={styles.dutyModalRowText}>
+                {new Date(`${selectedDutyEvent.date}T00:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+              </Text>
+            </View>
+            <View style={styles.dutyModalRow}>
+              <Clock size={16} color="#666" />
+              <Text style={styles.dutyModalRowText}>{selectedDutyEvent.time || '9:00 AM'}</Text>
+            </View>
+            <View style={styles.dutyModalRow}>
+              <MapPin size={16} color="#666" />
+              <Text style={styles.dutyModalRowText}>{selectedDutyEvent.location || 'Main Sanctuary'}</Text>
+            </View>
+          </View>
+
+          <View style={styles.dutyModalActions}>
+            <TouchableOpacity
+              style={styles.dutyModalDeclineBtn}
+              activeOpacity={0.7}
+              onPress={() => {
+                updateMinisterialDuty(selectedDutyEvent.id, currentUser.uid, 'cancel');
+                setSelectedDutyEvent(null);
+              }}
+            >
+              <Text style={styles.dutyModalDeclineText}>Decline</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.dutyModalAcceptBtnWrapper}
+              activeOpacity={0.8}
+              onPress={() => {
+                updateMinisterialDuty(selectedDutyEvent.id, currentUser.uid, 'accept');
+                setSelectedDutyEvent(null);
+              }}
+            >
+              <LinearGradient
+                colors={['#FF6596', '#FF8DA1']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.dutyModalAcceptGradient}
+              >
+                <Check size={18} color="#fff" strokeWidth={3} />
+                <Text style={styles.dutyModalAcceptText}>Accept Duty</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </AppModal>
+      )}
     </SafeAreaView>
   );
 }
@@ -390,17 +428,186 @@ const styles = StyleSheet.create({
   title: { fontSize: 28, fontWeight: 'bold', color: '#1a1a1a' },
   avatar: { width: 48, height: 48, borderRadius: 24 },
   scrollContent: { padding: 24, paddingTop: 12, paddingBottom: 100 },
-  dutyCard: { backgroundColor: '#fff', padding: 16, borderRadius: 16, marginBottom: 16, borderWidth: 1, borderColor: '#FFE8F0', borderLeftWidth: 4, borderLeftColor: '#FF6596', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
-  dutyHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-  dutyHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  dutyTitle: { fontSize: 14, fontWeight: '800', color: '#1a1a1a' },
-  dutyDateBadge: { backgroundColor: '#FFE8F0', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  dutyDateText: { fontSize: 11, fontWeight: '800', color: '#FF6596' },
-  dutyText: { fontSize: 13, color: '#666', lineHeight: 20, marginBottom: 12 },
-  dutyHighlight: { color: '#FF6596', fontWeight: 'bold' },
-  rsvpRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
-  rsvpBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f0f0f0', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, gap: 4 },
-  rsvpText: { fontSize: 12, fontWeight: '700', color: '#666' },
+  dutyCarouselContent: { },
+  mergedDutyCard: {
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF6596',
+    shadowColor: '#FF6596',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  mergedDutyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  mergedDutyTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFE8F0',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 4,
+  },
+  mergedDutyTagText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#FF6596',
+    letterSpacing: 0.5,
+  },
+  mergedDutyDateBadge: {
+    backgroundColor: '#FFF0F5',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  mergedDutyDateText: {
+    color: '#FF6596',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  mergedDutyMessage: {
+    fontSize: 13,
+    color: '#555',
+    lineHeight: 18,
+    marginBottom: 10,
+  },
+  mergedDutyRoleText: {
+    color: '#FF6596',
+    fontWeight: '800',
+  },
+  mergedDutyActionRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  mergedDeclineBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#FEE2E2',
+    gap: 4,
+  },
+  mergedDeclineText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#EF4444',
+  },
+  mergedAcceptBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#4ADE80',
+    gap: 4,
+    shadowColor: '#4ADE80',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  mergedAcceptText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  mergedConfirmedPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  mergedConfirmedText: { 
+    fontSize: 11, 
+    fontWeight: '700', 
+    color: '#16A34A' 
+  },
+  tapToRespondText: {
+    fontSize: 11,
+    color: '#FF6596',
+    fontWeight: '700',
+    paddingVertical: 6,
+  },
+  dutyModalEventName: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#1a1a1a',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  dutyModalDetails: {
+    gap: 12,
+    marginBottom: 24,
+    backgroundColor: '#F9FAFB',
+    padding: 16,
+    borderRadius: 16,
+  },
+  dutyModalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  dutyModalRowText: {
+    fontSize: 15,
+    color: '#4B5563',
+    fontWeight: '500',
+  },
+  dutyModalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  dutyModalDeclineBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 16,
+    backgroundColor: '#FFF0F5',
+  },
+  dutyModalDeclineText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FF6596',
+  },
+  dutyModalAcceptBtnWrapper: {
+    flex: 1.5,
+    borderRadius: 16,
+    shadowColor: '#FF6596',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  dutyModalAcceptGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 16,
+    gap: 8,
+  },
+  dutyModalAcceptText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#fff',
+  },
   rsvpActiveBtn: { backgroundColor: '#fff' },
   rsvpActiveText: { color: '#FF6596' },
   heroCard: { padding: 24, borderRadius: 24, marginBottom: 0, overflow: 'hidden' },
@@ -416,7 +623,6 @@ const styles = StyleSheet.create({
   heroRsvpRow: { flexDirection: 'row', gap: 8, marginTop: 16 },
   heroRsvpBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, gap: 4 },
   heroRsvpText: { fontSize: 12, fontWeight: '700', color: '#fff' },
-  heroSub: { color: 'rgba(255,255,255,0.8)', fontSize: 14 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 32 },
   gridItem: { width: '22%', alignItems: 'center' },
   iconWrapper: { width: 56, height: 56, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', marginBottom: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },

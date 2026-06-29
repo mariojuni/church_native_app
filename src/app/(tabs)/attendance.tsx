@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Users, Award, Calendar, QrCode } from 'lucide-react-native';
+import { Users, Award, Calendar, QrCode, Bell } from 'lucide-react-native';
 import { useMemberStore } from '../../store/useMemberStore';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useScheduleStore } from '../../store/useScheduleStore';
 import { db } from '../../firebase';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { useRouter } from 'expo-router';
@@ -13,6 +14,7 @@ import ScheduleTab from '../../components/Staff/ScheduleTab';
 export default function AttendanceScreen() {
   const { members } = useMemberStore();
   const { userProfile } = useAuthStore();
+  const { schedules } = useScheduleStore();
   const isStaff = userProfile?.role?.toLowerCase() === 'staff';
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('reports');
@@ -38,20 +40,35 @@ export default function AttendanceScreen() {
   const totalRegisteredMembers = members.length || 1;
   const checkedInRatio = Math.round((checkedInMembers.length / totalRegisteredMembers) * 100);
 
+  // Compute un-dismissed notifications across all upcoming schedules
+  const unDismissedNotifications = schedules.flatMap(s => s.duties || [])
+    .filter(d => d.status === 'accepted' || d.status === 'declined').length;
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <View>
           <Text style={styles.title}>Staff</Text>
         </View>
-        <TouchableOpacity style={styles.qrButton} onPress={() => router.push('/scanner')}>
-          <QrCode size={20} color="#1a1a1a" />
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity 
+            style={styles.iconBtn} 
+            onPress={() => router.push('/staff-notifications')}
+          >
+            <Bell size={22} color="#1a1a1a" />
+            {unDismissedNotifications > 0 && (
+              <View style={styles.badge} />
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/scanner')}>
+            <QrCode size={22} color="#1a1a1a" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.filterContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
-          {['Attendance', 'Schedule', 'Reports'].map((f) => (
+          {['Attendance', 'Events', 'Reports'].map((f) => (
             <TouchableOpacity 
               key={f} 
               style={[
@@ -113,7 +130,7 @@ export default function AttendanceScreen() {
           />
         )}
 
-        {activeTab === 'schedule' && (
+        {activeTab === 'events' && (
           <ScheduleTab />
         )}
       </ScrollView>
@@ -123,8 +140,44 @@ export default function AttendanceScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FAFAFA' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, paddingBottom: 16 },
-  title: { fontSize: 34, fontWeight: '900', color: '#1a1a1a', letterSpacing: -0.5 },
+  header: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    padding: 24, 
+    paddingBottom: 16 
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  iconBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    position: 'relative',
+  },
+  badge: {
+    position: 'absolute',
+    top: 10,
+    right: 12,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#EF4444',
+    borderWidth: 1.5,
+    borderColor: '#fff',
+  },
+  title: { fontSize: 28, fontWeight: 'bold', color: '#1a1a1a', letterSpacing: -0.5 },
   qrButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.8)', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)' },
   filterContainer: { paddingBottom: 16 },
   filterScroll: { paddingHorizontal: 24, gap: 16 },

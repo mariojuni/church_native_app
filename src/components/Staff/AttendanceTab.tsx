@@ -5,11 +5,12 @@ import {
 } from 'react-native';
 import { 
   Search, CheckCircle, X, Users, CalendarDays, 
-  UserPlus, Trash2, Clock, ShieldAlert, ChevronRight, ChevronLeft
+  UserPlus, Trash2, Clock, ShieldAlert, ChevronRight, ChevronLeft, User
 } from 'lucide-react-native';
 import { db } from '../../firebase';
 import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
 import AppModal from '../ui/AppModal';
+import CustomDatePicker from '../CustomDatePicker';
 
 const getTodayStr = () => {
   const d = new Date();
@@ -249,58 +250,19 @@ export default function AttendanceTab({ members, showStaffFeatures }: Attendance
       </View>
 
       {/* Calendar Modal */}
-      <AppModal isOpen={isCalendarOpen} onClose={closeCalendar} title="Select Date">
-        <View style={{ paddingHorizontal: 24, paddingVertical: 16 }}>
-          <View style={styles.calendarMonthRow}>
-            <TouchableOpacity onPress={() => setCalendarViewDate(new Date(calendarViewDate.getFullYear(), calendarViewDate.getMonth() - 1, 1))} style={styles.calendarArrowBtn}>
-              <ChevronLeft size={20} color="#1a1a1a" />
-            </TouchableOpacity>
-            <Text style={styles.calendarMonthText}>
-              {monthNames[calendarViewDate.getMonth()]} {calendarViewDate.getFullYear()}
-            </Text>
-            <TouchableOpacity onPress={() => setCalendarViewDate(new Date(calendarViewDate.getFullYear(), calendarViewDate.getMonth() + 1, 1))} style={styles.calendarArrowBtn}>
-              <ChevronRight size={20} color="#1a1a1a" />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.calendarDaysRow}>
-            {dayNames.map(d => (
-              <Text key={d} style={styles.calendarDayName}>{d}</Text>
-            ))}
-          </View>
-
-          <View style={styles.calendarGrid}>
-            {Array.from({ length: getFirstDayOfMonth(calendarViewDate.getFullYear(), calendarViewDate.getMonth()) }).map((_, i) => (
-              <View key={`empty-${i}`} style={styles.calendarCellContainer} />
-            ))}
-            {Array.from({ length: getDaysInMonth(calendarViewDate.getFullYear(), calendarViewDate.getMonth()) }).map((_, i) => {
-              const d = i + 1;
-              const dateStr = formatLocal(new Date(calendarViewDate.getFullYear(), calendarViewDate.getMonth(), d));
-              const isSelected = filterDate === dateStr;
-              const isToday = dateStr === formatLocal(new Date());
-              
-              return (
-                <View key={d} style={styles.calendarCellContainer}>
-                  <TouchableOpacity 
-                    onPress={() => { setFilterDate(dateStr); closeCalendar(); }}
-                    style={[
-                      styles.calendarCell,
-                      isSelected ? styles.calendarCellSelected : isToday ? styles.calendarCellToday : null
-                    ]}
-                  >
-                    <Text style={[
-                      styles.calendarCellText,
-                      isSelected ? styles.calendarCellTextSelected : isToday ? styles.calendarCellTextToday : null
-                    ]}>
-                      {d}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              );
-            })}
-          </View>
-        </View>
-      </AppModal>
+      <CustomDatePicker
+        visible={isCalendarOpen}
+        date={
+          filterDate
+            ? new Date(Number(filterDate.split('-')[0]), Number(filterDate.split('-')[1]) - 1, Number(filterDate.split('-')[2]))
+            : new Date()
+        }
+        onConfirm={(d) => {
+          setFilterDate(formatLocal(d));
+          closeCalendar();
+        }}
+        onCancel={closeCalendar}
+      />
 
       {/* Manual Check-in Modal */}
       <AppModal isOpen={isManualCheckinOpen} onClose={() => setIsManualCheckinOpen(false)} title="Manual Check-in">
@@ -328,7 +290,13 @@ export default function AttendanceTab({ members, showStaffFeatures }: Attendance
               matchingUncheckedMembers.map(m => (
                 <View key={m.id} style={styles.modalListItem}>
                   <View style={styles.modalListItemLeft}>
-                    <Image source={{ uri: m.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name || 'User')}&background=f0f0f0&color=999&size=150` }} style={styles.modalAvatar} />
+                    {m.avatar ? (
+                      <Image source={{ uri: m.avatar }} style={styles.modalAvatar} />
+                    ) : (
+                      <View style={[styles.modalAvatar, { backgroundColor: '#f0f0f0', alignItems: 'center', justifyContent: 'center' }]}>
+                        <User size={20} color="#999" />
+                      </View>
+                    )}
                     <View>
                       <Text style={styles.modalMemberName}>{m.name}</Text>
                       <Text style={styles.modalMemberRole}>{m.role}</Text>
