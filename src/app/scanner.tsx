@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { X, RefreshCw } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { addDoc, collection, getDocs, query, serverTimestamp, where } from 'firebase/firestore';
+import { RefreshCw, X } from 'lucide-react-native';
+import { useState } from 'react';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useMemberStore } from '../store/useMemberStore';
 
 const getTodayStr = () => {
@@ -17,7 +17,7 @@ export default function ScannerScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanLoading, setScanLoading] = useState(false);
   const router = useRouter();
-  const { members } = useMemberStore();
+  const members = useMemberStore((state) => state.members);
 
   if (!permission) {
     return <View />;

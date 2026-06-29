@@ -1,7 +1,7 @@
-import React, { ReactNode, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, StyleProp, ViewStyle, TouchableWithoutFeedback, Animated } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
+import { ReactNode, useEffect, useMemo } from 'react';
+import { Animated, Modal, StyleProp, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View, ViewStyle } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface AppModalProps {
   isOpen: boolean;
@@ -15,13 +15,13 @@ interface AppModalProps {
 }
 
 export default function AppModal({ isOpen, onClose, title, children, containerStyle, headerLeft, headerRight, headerTitleAlign = 'center' }: AppModalProps) {
-  const slideAnim = useRef(new Animated.Value(500)).current;
+  const slideAnim = useMemo(() => new Animated.Value(500), []);
 
   useEffect(() => {
     if (isOpen) {
       Animated.timing(slideAnim, {
         toValue: 0,
-        duration: 300,
+        duration: 220,
         useNativeDriver: true,
       }).start();
     } else {
@@ -30,7 +30,7 @@ export default function AppModal({ isOpen, onClose, title, children, containerSt
   }, [isOpen, slideAnim]);
 
   return (
-    <Modal visible={isOpen} animationType="fade" transparent={true} onRequestClose={onClose}>
+    <Modal visible={isOpen} animationType="none" transparent={true} onRequestClose={onClose}>
       <View style={styles.overlay}>
         <TouchableWithoutFeedback onPress={onClose}>
           <View style={styles.backdrop} />

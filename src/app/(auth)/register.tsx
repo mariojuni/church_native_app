@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useAuthStore } from '../../store/useAuthStore';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Mail, Lock, AlertCircle } from 'lucide-react-native';
 import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
+import { AlertCircle, Lock, Mail } from 'lucide-react-native';
+import { useState } from 'react';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export default function RegisterScreen() {
   const [email, setEmail] = useState('');
@@ -14,7 +14,8 @@ export default function RegisterScreen() {
   const [errorMsg, setErrorMsg] = useState('');
   
   const router = useRouter();
-  const { signup, loginWithGoogle } = useAuthStore();
+  const signup = useAuthStore((state) => state.signup);
+  const loginWithGoogle = useAuthStore((state) => state.loginWithGoogle);
 
   const handleRegister = async () => {
     if (!email || !password) {

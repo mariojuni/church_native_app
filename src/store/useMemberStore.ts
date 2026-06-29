@@ -1,10 +1,10 @@
 import { create } from 'zustand';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
-import { db } from '../firebase';
+import { memberRepository } from '../features/member/data/member.repository';
+import type { Member, Service } from '../features/member/domain/member.types';
 
 interface MemberStore {
-  members: any[];
-  services: any[];
+  members: Member[];
+  services: Service[];
   membersLoading: boolean;
   servicesLoading: boolean;
   initializeMembersListener: () => void;
@@ -18,38 +18,26 @@ export const useMemberStore = create<MemberStore>((set) => ({
   servicesLoading: true,
   
   initializeMembersListener: () => {
-    const q = query(collection(db, 'users'), orderBy('name', 'asc'));
-    onSnapshot(q, (snapshot) => {
-      if (!snapshot.empty) {
-        const docs = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        set({ members: docs, membersLoading: false });
-      } else {
-        set({ members: [], membersLoading: false });
+    memberRepository.subscribeToMembers(
+      (members) => {
+        set({ members, membersLoading: false });
+      },
+      (error) => {
+        console.error('Error fetching users:', error);
+        set({ membersLoading: false });
       }
-    }, (error) => {
-      console.error("Error fetching users: ", error);
-      set({ membersLoading: false });
-    });
+    );
   },
 
   initializeServicesListener: () => {
-    const q = query(collection(db, 'services'), orderBy('date', 'asc'));
-    onSnapshot(q, (snapshot) => {
-      if (!snapshot.empty) {
-        const docs = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        set({ services: docs, servicesLoading: false });
-      } else {
-        set({ services: [], servicesLoading: false });
+    memberRepository.subscribeToServices(
+      (services) => {
+        set({ services, servicesLoading: false });
+      },
+      (error) => {
+        console.error('Error fetching services:', error);
+        set({ servicesLoading: false });
       }
-    }, (error) => {
-      console.error("Error fetching services: ", error);
-      set({ servicesLoading: false });
-    });
+    );
   }
 }));

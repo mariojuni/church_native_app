@@ -1,0 +1,45 @@
+import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { db } from '../../../firebase';
+import type { Member, Service } from '../domain/member.types';
+
+type MembersListener = (members: Member[]) => void;
+type ServicesListener = (services: Service[]) => void;
+type ErrorListener = (error: Error) => void;
+
+function mapDocWithId<T extends Record<string, unknown>>(docData: Record<string, unknown>, id: string): T & { id: string } {
+  return {
+    id,
+    ...(docData as T),
+  };
+}
+
+export const memberRepository = {
+  subscribeToMembers(onData: MembersListener, onError: ErrorListener): () => void {
+    const membersQuery = query(collection(db, 'users'), orderBy('name', 'asc'));
+    return onSnapshot(
+      membersQuery,
+      (snapshot) => {
+        const members = snapshot.docs.map((docSnap) =>
+          mapDocWithId<Member>(docSnap.data() as Record<string, unknown>, docSnap.id)
+        );
+        onData(members);
+      },
+      onError
+    );
+  },
+
+  subscribeToServices(onData: ServicesListener, onError: ErrorListener): () => void {
+    const servicesQuery = query(collection(db, 'services'), orderBy('date', 'asc'));
+    return onSnapshot(
+      servicesQuery,
+      (snapshot) => {
+        const services = snapshot.docs.map((docSnap) =>
+          mapDocWithId<Service>(docSnap.data() as Record<string, unknown>, docSnap.id)
+        );
+        onData(services);
+      },
+      onError
+    );
+  },
+};
+

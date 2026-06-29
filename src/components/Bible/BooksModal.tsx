@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import AppModal from '../ui/AppModal';
+import { useBooksModal } from '@/features/bible/presentation/hooks/useBooksModal';
 
 interface BooksModalProps {
   isOpen: boolean;
@@ -10,19 +10,7 @@ interface BooksModalProps {
 }
 
 export default function BooksModal({ isOpen, onClose, books, onSelectChapter }: BooksModalProps) {
-  const [expandedBook, setExpandedBook] = useState<string | null>(null);
-  const [sortMode, setSortMode] = useState<'Traditional' | 'Alphabetical'>('Traditional');
-
-  const sortedBooks = [...(books || [])].sort((a, b) => {
-    if (sortMode === 'Alphabetical') {
-      return (a.title || a.name).localeCompare(b.title || b.name);
-    }
-    return 0; // Traditional
-  });
-
-  const handleBookTap = (bookId: string) => {
-    setExpandedBook(expandedBook === bookId ? null : bookId);
-  };
+  const { collapseBook, expandedBook, setSortMode, sortMode, sortedBooks, toggleBook } = useBooksModal(books);
 
   const renderChapters = (book: any) => {
     const chapters = book.chapters || [];
@@ -36,7 +24,7 @@ export default function BooksModal({ isOpen, onClose, books, onSelectChapter }: 
               style={styles.chapterGridItem}
               onPress={() => {
                 onSelectChapter(book.id, chapter.id);
-                setExpandedBook(null);
+                collapseBook();
               }}
             >
               <Text style={styles.chapterGridText}>{chapNum}</Text>
@@ -51,25 +39,22 @@ export default function BooksModal({ isOpen, onClose, books, onSelectChapter }: 
     <AppModal isOpen={isOpen} onClose={onClose} title="Books">
       {/* Book List */}
       <ScrollView style={styles.content}>
-        {sortedBooks.map(book => (
-          <View key={book.id}>
-            <TouchableOpacity 
-              style={[
-                styles.bookItem, 
-                expandedBook === book.id && styles.bookItemExpanded
-              ]}
-              onPress={() => handleBookTap(book.id)}
-            >
-              <Text style={[
-                styles.bookName, 
-                expandedBook === book.id && styles.bookNameExpanded
-              ]}>
-                {book.title || book.name}
-              </Text>
-            </TouchableOpacity>
-            {expandedBook === book.id && renderChapters(book)}
-          </View>
-        ))}
+        {sortedBooks.map((book) => {
+          const isExpanded = expandedBook === String(book.id);
+          return (
+            <View key={book.id}>
+              <TouchableOpacity
+                style={[styles.bookItem, isExpanded && styles.bookItemExpanded]}
+                onPress={() => toggleBook(book.id)}
+              >
+                <Text style={[styles.bookName, isExpanded && styles.bookNameExpanded]}>
+                  {book.title || book.name}
+                </Text>
+              </TouchableOpacity>
+              {isExpanded && renderChapters(book)}
+            </View>
+          );
+        })}
       </ScrollView>
 
       {/* Segmented Control */}

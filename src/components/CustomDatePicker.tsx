@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { useState } from 'react';
+import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -15,13 +15,10 @@ export default function CustomDatePicker({ visible, date, onConfirm, onCancel }:
   const [currentMonth, setCurrentMonth] = useState(new Date(date.getFullYear(), date.getMonth(), 1));
   const [selectedDate, setSelectedDate] = useState(date);
 
-  // Sync state if modal opens with a new date
-  useEffect(() => {
-    if (visible) {
-      setCurrentMonth(new Date(date.getFullYear(), date.getMonth(), 1));
-      setSelectedDate(date);
-    }
-  }, [visible, date]);
+  const handleShow = () => {
+    setCurrentMonth(new Date(date.getFullYear(), date.getMonth(), 1));
+    setSelectedDate(date);
+  };
 
   const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
   const firstDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay();
@@ -54,7 +51,7 @@ export default function CustomDatePicker({ visible, date, onConfirm, onCancel }:
   }
 
   return (
-    <Modal visible={visible} animationType="fade" transparent={true} onRequestClose={onCancel}>
+    <Modal visible={visible} animationType="fade" transparent={true} onRequestClose={onCancel} onShow={handleShow}>
       <View style={styles.overlay}>
         <View style={styles.modalContainer}>
           {/* Header */}

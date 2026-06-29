@@ -1,4 +1,3 @@
-
 import { StyleSheet } from 'react-native';
 
 export const styles = StyleSheet.create({
@@ -25,18 +24,18 @@ export const styles = StyleSheet.create({
   },
   headerLeftContainer: {
     minWidth: 60,
-    alignItems: 'flex-start'
+    alignItems: 'flex-start',
   },
   headerRightContainer: {
     minWidth: 60,
-    alignItems: 'flex-end'
+    alignItems: 'flex-end',
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: '#1a1a1a',
     flex: 1,
-    textAlign: 'center'
+    textAlign: 'center',
   },
   modalTitleLeft: {
     textAlign: 'left',
@@ -109,9 +108,9 @@ export const styles = StyleSheet.create({
     color: '#999',
     marginBottom: 2,
   },
-  versionName: { 
-    fontSize: 16, 
-    fontWeight: '600', 
+  versionName: {
+    fontSize: 16,
+    fontWeight: '600',
     color: '#1a1a1a',
     lineHeight: 22,
   },

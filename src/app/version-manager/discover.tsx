@@ -1,12 +1,12 @@
 
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, TextInput, ActivityIndicator } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, ChevronRight, Search, Globe, Cloud } from 'lucide-react-native';
+import { fetchBiblesByLanguage } from '@/features/bible/data/bible.repository';
 import { useRouter } from 'expo-router';
-import { useVersionContext } from './_context';
-import { styles } from './_styles';
-import { fetchBiblesByLanguage } from '../../utils/bibleApi';
+import { ChevronLeft, ChevronRight, Cloud, Globe, Search } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useVersionContext } from '@/features/bible/presentation/context/VersionManagerContext';
+import { styles } from '@/features/bible/presentation/version-manager/styles';
 
 export default function DiscoverVersionsScreen() {
   const router = useRouter();

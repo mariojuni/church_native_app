@@ -1,124 +1,87 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Modal } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Crown, Users, Calendar, CalendarDays, HeartHandshake, HandHeart, Grid, CheckCircle2, HelpCircle, XCircle, Check, X, MapPin, Clock } from 'lucide-react-native';
-import { useAuthStore } from '../../store/useAuthStore';
-import { useMemberStore } from '../../store/useMemberStore';
-import { useScheduleStore, getUpcomingSchedules, getUserMinisterialRoles, getUserRsvpStatus, updateRsvp, updateMinisterialDuty, Schedule } from '../../store/useScheduleStore';
-import { db } from '../../firebase';
-import { collection, query, orderBy, limit, onSnapshot, doc, runTransaction } from 'firebase/firestore';
-import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import { Calendar, CalendarDays, Check, CheckCircle2, Clock, Crown, Grid, HandHeart, HeartHandshake, HelpCircle, MapPin, Users, XCircle } from 'lucide-react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { Dimensions, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import AppModal from '../../components/ui/AppModal';
+import type { Schedule } from '@/features/schedule/domain/schedule.types';
+import { useHomeScreenData } from '@/features/home/presentation/hooks/useHomeScreenData';
 
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
-  const { userProfile, currentUser } = useAuthStore();
-  const { members } = useMemberStore();
-  const { schedules, initializeSchedulesListener } = useScheduleStore();
   const router = useRouter();
+  const {
+    currentUser,
+    displayName,
+    latestPrayer,
+    myUpcomingDuties,
+    upcomingEvents,
+    getUserMinisterialRoles,
+    getUserRsvpStatus,
+    handleMinisterialDuty,
+    handlePray,
+    handleRsvp,
+    formatPrayerTimeAgo,
+  } = useHomeScreenData();
 
-  const [latestPrayer, setLatestPrayer] = useState<any>(null);
   const [activeSlide, setActiveSlide] = useState(0);
   const [activeDutySlide, setActiveDutySlide] = useState(0);
   const [selectedDutyEvent, setSelectedDutyEvent] = useState<Schedule | null>(null);
   
   const screenWidth = Dimensions.get('window').width;
   const cardWidth = screenWidth - 48;
+  const currentUserId = currentUser?.uid ?? '';
+  const dutyCards = useMemo(
+    () =>
+      myUpcomingDuties
+        .map((event) => {
+          if (!currentUserId) return null;
+          const dutyRole = getUserMinisterialRoles(event, currentUserId);
+          if (!dutyRole) return null;
 
-  const displayName = userProfile?.name 
-    ? userProfile.name.split(' ')[0] 
-    : (currentUser?.displayName ? currentUser.displayName.split(' ')[0] : 'User');
-
-  // ─── Initialize schedule listener ─────────────────────────────────────
-  useEffect(() => {
-    const unsubscribe = initializeSchedulesListener();
-    return () => unsubscribe();
-  }, []);
-
-  // ─── Derive upcoming events from store ────────────────────────────────
-  const upcomingEvents = useMemo(() => getUpcomingSchedules(schedules), [schedules]);
-
-  // ─── Derive user's specific upcoming duties ────────────────────────────
-  const myUpcomingDuties = useMemo(() => {
-    if (!currentUser) return [];
-    
-    const now = new Date();
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-
-    return schedules
-      .filter(s => {
-        if (s.date < todayStr) return false;
-        return getUserMinisterialRoles(s, currentUser.uid) !== null;
-      })
-      .sort((a, b) => {
-        if (a.date !== b.date) return a.date.localeCompare(b.date);
-        return (a.time || '').localeCompare(b.time || '');
-      });
-  }, [schedules, currentUser]);
-
-  // ─── Prayer listener ──────────────────────────────────────────────────
-  useEffect(() => {
-    const q = query(collection(db, 'prayers'), orderBy('createdAt', 'desc'), limit(1));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (!snapshot.empty) {
-        setLatestPrayer({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() });
-      } else {
-        setLatestPrayer(null);
+          const userDuty = event.duties?.find(
+            (d) => d.userId === currentUserId && d.role?.toLowerCase() !== 'attendee'
+          );
+          return {
+            accepted: userDuty?.status === 'accepted' || userDuty?.status === 'accepted_dismissed',
+            event,
+            eventDate: new Date(`${event.date}T00:00:00`).toLocaleDateString('en-US', {
+              weekday: 'short',
+              month: 'short',
+              day: 'numeric',
+            }),
+            dutyRole,
+          };
+        })
+        .filter((item): item is NonNullable<typeof item> => item !== null),
+    [currentUserId, getUserMinisterialRoles, myUpcomingDuties]
+  );
+  const heroCards = useMemo(
+    () =>
+      upcomingEvents.map((event) => ({
+        event,
+        rsvpStatus: currentUserId ? getUserRsvpStatus(event, currentUserId) : null,
+      })),
+    [currentUserId, getUserRsvpStatus, upcomingEvents]
+  );
+  const handleDutyScroll = useCallback(
+    (offsetX: number) => {
+      const slide = Math.round(offsetX / cardWidth);
+      if (slide !== activeDutySlide && slide >= 0) {
+        setActiveDutySlide(slide);
       }
-    });
-    return () => unsubscribe();
-  }, []);
-
-  // ─── RSVP handler (writes to rsvps array, not duties) ─────────────────
-  const handleRsvp = async (eventId: string, status: string) => {
-    if (!currentUser) return;
-    try {
-      await updateRsvp(eventId, currentUser.uid, status);
-    } catch (e) {
-      console.error('RSVP error:', e);
-    }
-  };
-
-  // ─── Prayer handler ───────────────────────────────────────────────────
-  const handlePray = async (id: string) => {
-    if (!currentUser) return;
-    const docRef = doc(db, 'prayers', id);
-    const userId = currentUser.uid;
-    try {
-      await runTransaction(db, async (transaction) => {
-        const sfDoc = await transaction.get(docRef);
-        if (!sfDoc.exists()) return;
-        const currentLikedBy = sfDoc.data().likedBy || [];
-        const currentLikes = sfDoc.data().likes || 0;
-        let newLikedBy, newLikes;
-        if (currentLikedBy.includes(userId)) {
-          newLikedBy = currentLikedBy.filter((uid: string) => uid !== userId);
-          newLikes = Math.max(0, currentLikes - 1);
-        } else {
-          newLikedBy = [...currentLikedBy, userId];
-          newLikes = currentLikes + 1;
-        }
-        transaction.update(docRef, { likedBy: newLikedBy, likes: newLikes });
-      });
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const formatTimeAgo = (timestamp: any) => {
-    if (!timestamp) return 'Just now';
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    const seconds = Math.floor((new Date().getTime() - date) / 1000);
-    if (seconds < 60) return 'Just now';
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    return `${Math.floor(hours / 24)}d ago`;
-  };
+    },
+    [activeDutySlide, cardWidth]
+  );
+  const handleHeroScrollEnd = useCallback(
+    (offsetX: number) => {
+      const slide = Math.round(offsetX / cardWidth);
+      setActiveSlide(slide);
+    },
+    [cardWidth]
+  );
 
   const insets = useSafeAreaInsets();
 
@@ -141,7 +104,7 @@ export default function HomeScreen() {
 
       <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: Math.max(insets.top, 24) + 104 }]} showsVerticalScrollIndicator={false}>
         {/* ─── Ministerial Duty Section ─────────────────────────────────── */}
-        {myUpcomingDuties.length > 0 && (
+        {dutyCards.length > 0 && (
           <View>
             <ScrollView
               horizontal
@@ -150,23 +113,9 @@ export default function HomeScreen() {
               style={{ marginBottom: 16 }}
               contentContainerStyle={styles.dutyCarouselContent}
               scrollEventThrottle={16}
-              onScroll={(e) => {
-                const slide = Math.round(e.nativeEvent.contentOffset.x / cardWidth);
-                if (slide !== activeDutySlide && slide >= 0) {
-                  setActiveDutySlide(slide);
-                }
-              }}
+              onScroll={(e) => handleDutyScroll(e.nativeEvent.contentOffset.x)}
             >
-              {myUpcomingDuties.map((event) => {
-                if (!currentUser) return null;
-                const dutyRole = getUserMinisterialRoles(event, currentUser.uid);
-                if (!dutyRole) return null;
-                const userDuty = event.duties?.find(
-                  (d: any) => d.userId === currentUser.uid && d.role?.toLowerCase() !== 'attendee'
-                );
-                const accepted = userDuty?.status === 'accepted' || userDuty?.status === 'accepted_dismissed';
-                const eventDate = new Date(`${event.date}T00:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-
+              {dutyCards.map(({ accepted, dutyRole, event, eventDate }) => {
                 return (
                   <View key={`duty-${event.id}`} style={{ width: cardWidth }}>
                     <TouchableOpacity activeOpacity={0.8} onPress={() => setSelectedDutyEvent(event)}>
@@ -184,7 +133,7 @@ export default function HomeScreen() {
 
                         {/* Message Body */}
                         <Text style={styles.mergedDutyMessage} numberOfLines={3}>
-                          Thank you for your dedicated ministry, {displayName.split(' ')[0]}. You are scheduled for <Text style={styles.mergedDutyRoleText}>{dutyRole}</Text> on {event.event || 'this Sunday'}.
+                          Thank you for your dedicated ministry, {displayName}. You are scheduled for <Text style={styles.mergedDutyRoleText}>{dutyRole}</Text> on {event.event || 'this Sunday'}.
                         </Text>
 
                         {/* Action Row */}
@@ -206,9 +155,9 @@ export default function HomeScreen() {
             </ScrollView>
             
             {/* Duty Pagination Dots */}
-            {myUpcomingDuties.length > 1 && (
+            {dutyCards.length > 1 && (
               <View style={styles.paginationRow}>
-                {myUpcomingDuties.map((_, i) => (
+                {dutyCards.map((_, i) => (
                   <View key={i} style={[styles.paginationDot, activeDutySlide === i && styles.paginationDotActive]} />
                 ))}
               </View>
@@ -217,21 +166,16 @@ export default function HomeScreen() {
         )}
 
         {/* ─── Hero Carousel ──────────────────────────────────────────── */}
-        {upcomingEvents.length > 0 ? (
+        {heroCards.length > 0 ? (
           <View>
             <ScrollView 
               horizontal 
               pagingEnabled 
               showsHorizontalScrollIndicator={false}
-              onMomentumScrollEnd={(e) => {
-                const slide = Math.round(e.nativeEvent.contentOffset.x / cardWidth);
-                setActiveSlide(slide);
-              }}
+              onMomentumScrollEnd={(e) => handleHeroScrollEnd(e.nativeEvent.contentOffset.x)}
               style={styles.heroScroll}
             >
-              {upcomingEvents.map((event) => {
-                const rsvpStatus = currentUser ? getUserRsvpStatus(event, currentUser.uid) : null;
-
+              {heroCards.map(({ event, rsvpStatus }) => {
                 return (
                   <View key={`hero-${event.id}`} style={{ width: cardWidth }}>
                     <TouchableOpacity activeOpacity={0.9}>
@@ -273,9 +217,9 @@ export default function HomeScreen() {
               })}
             </ScrollView>
             
-            {upcomingEvents.length > 1 && (
+            {heroCards.length > 1 && (
               <View style={styles.paginationRow}>
-                {upcomingEvents.map((_, index) => (
+                {heroCards.map((_, index) => (
                   <View 
                     key={`dot-${index}`} 
                     style={[styles.paginationDot, activeSlide === index && styles.paginationDotActive]} 
@@ -341,16 +285,16 @@ export default function HomeScreen() {
           <View style={[styles.prayerCard, latestPrayer.answered && { borderLeftColor: '#4ADE80' }]}>
             <View style={styles.prayerTop}>
               <Text style={styles.prayerName}>{latestPrayer.name}</Text>
-              <Text style={styles.prayerTime}>{formatTimeAgo(latestPrayer.createdAt)}</Text>
+              <Text style={styles.prayerTime}>{formatPrayerTimeAgo(latestPrayer.createdAt)}</Text>
             </View>
             <Text style={styles.prayerText}>{latestPrayer.request}</Text>
             <TouchableOpacity 
-              style={[styles.prayButton, latestPrayer.likedBy?.includes(currentUser?.uid) && styles.prayButtonActive]}
+              style={[styles.prayButton, latestPrayer.likedBy?.includes(currentUserId) && styles.prayButtonActive]}
               onPress={() => handlePray(latestPrayer.id)}
             >
-              <HeartHandshake size={14} color={latestPrayer.likedBy?.includes(currentUser?.uid) ? '#fff' : '#007AFF'} />
-              <Text style={[styles.prayButtonText, latestPrayer.likedBy?.includes(currentUser?.uid) && styles.prayButtonTextActive]}>
-                {latestPrayer.likedBy?.includes(currentUser?.uid) ? 'Prayed' : 'Pray'} ({latestPrayer.likes || 0})
+              <HeartHandshake size={14} color={latestPrayer.likedBy?.includes(currentUserId) ? '#fff' : '#007AFF'} />
+              <Text style={[styles.prayButtonText, latestPrayer.likedBy?.includes(currentUserId) && styles.prayButtonTextActive]}>
+                {latestPrayer.likedBy?.includes(currentUserId) ? 'Prayed' : 'Pray'} ({latestPrayer.likes || 0})
               </Text>
             </TouchableOpacity>
           </View>
@@ -399,7 +343,7 @@ export default function HomeScreen() {
               style={styles.dutyModalDeclineBtn}
               activeOpacity={0.7}
               onPress={() => {
-                updateMinisterialDuty(selectedDutyEvent.id, currentUser.uid, 'cancel');
+                handleMinisterialDuty(selectedDutyEvent.id, 'cancel');
                 setSelectedDutyEvent(null);
               }}
             >
@@ -410,7 +354,7 @@ export default function HomeScreen() {
               style={styles.dutyModalAcceptBtnWrapper}
               activeOpacity={0.8}
               onPress={() => {
-                updateMinisterialDuty(selectedDutyEvent.id, currentUser.uid, 'accept');
+                handleMinisterialDuty(selectedDutyEvent.id, 'accept');
                 setSelectedDutyEvent(null);
               }}
             >
@@ -460,11 +404,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderLeftWidth: 4,
     borderLeftColor: '#FF6596',
-    shadowColor: '#FF6596',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.05,
     shadowRadius: 10,
-    elevation: 3,
+    elevation: 2,
   },
   mergedDutyHeader: {
     flexDirection: 'row',
@@ -538,10 +482,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: '#4ADE80',
     gap: 4,
-    shadowColor: '#4ADE80',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
     elevation: 2,
   },
   mergedAcceptText: {
@@ -614,11 +558,11 @@ const styles = StyleSheet.create({
   dutyModalAcceptBtnWrapper: {
     flex: 1.5,
     borderRadius: 16,
-    shadowColor: '#FF6596',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
   },
   dutyModalAcceptGradient: {
     flexDirection: 'row',

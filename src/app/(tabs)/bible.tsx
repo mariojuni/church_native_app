@@ -1,11 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, SafeAreaView, Platform } from 'react-native';
-import { Settings, BookOpen } from 'lucide-react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+import {
+  type BibleBook,
+  type BiblePreferences,
+  useBibleTopNav,
+  type BibleVersion,
+} from '@/features/bible/presentation/hooks/useBibleTopNav';
 import { db } from '../../firebase';
 import { useAuthStore } from '../../store/useAuthStore';
-import { getUserPreferences, saveUserPreferences, getSavedVersions, fetchBibleIndex } from '../../utils/bibleApi';
+import { fetchBibleIndex, getSavedVersions, getUserPreferences, saveUserPreferences } from '../../utils/bibleApi';
 
 import BibleReader from '../../components/Bible/BibleReader';
 
@@ -13,11 +18,26 @@ import BooksModal from '../../components/Bible/BooksModal';
 
 import TopNavBar from '../../components/Navigation/TopNavBar';
 
+type BiblePreferencesWithHighlights = BiblePreferences & {
+  highlights?: Record<string, Record<string, string>>;
+};
+
+type BibleIndexResponse = {
+  books?: BibleBook[];
+};
+
+const DEFAULT_PREFERENCES: BiblePreferencesWithHighlights = {
+  activeBook: '',
+  activeChapter: '',
+  activeTranslation: '',
+  highlights: {},
+};
+
 export default function BibleScreen() {
-  const { userProfile } = useAuthStore();
-  const [preferences, setPreferences] = useState<any>(null);
-  const [savedVersions, setSavedVersions] = useState<any[]>([]);
-  const [books, setBooks] = useState<any[]>([]);
+  const userProfile = useAuthStore((state) => state.userProfile);
+  const [preferences, setPreferences] = useState<BiblePreferencesWithHighlights | null>(null);
+  const [savedVersions, setSavedVersions] = useState<BibleVersion[]>([]);
+  const [books, setBooks] = useState<BibleBook[]>([]);
 
   const [isBooksModalOpen, setIsBooksModalOpen] = useState(false);
   const router = useRouter();
@@ -27,9 +47,9 @@ export default function BibleScreen() {
   useFocusEffect(
     React.useCallback(() => {
       const init = async () => {
-        const prefs = await getUserPreferences();
+        const prefs = (await getUserPreferences()) as BiblePreferencesWithHighlights;
         setPreferences(prefs);
-        const versions = await getSavedVersions();
+        const versions = (await getSavedVersions()) as BibleVersion[];
         setSavedVersions(versions);
       };
       init();
@@ -41,7 +61,7 @@ export default function BibleScreen() {
     if (!preferences?.activeTranslation) return;
     
     const loadBooks = async () => {
-      const data = await fetchBibleIndex(preferences.activeTranslation);
+      const data = (await fetchBibleIndex(preferences.activeTranslation)) as BibleIndexResponse | null;
       if (data && data.books) {
         setBooks(data.books);
       } else {
@@ -53,19 +73,20 @@ export default function BibleScreen() {
 
   // Sync highlights from Firebase
   useEffect(() => {
-    if (!userProfile?.uid || !preferences) return;
+    if (!userProfile?.uid) return;
     
     const fetchUserHighlights = async () => {
       try {
         const docRef = doc(db, 'users', userProfile.uid, 'bible', 'preferences');
         const docSnap = await getDoc(docRef);
         if (docSnap.exists() && docSnap.data().highlights) {
-          setPreferences((prev: any) => ({
-            ...prev,
+          const remoteHighlights = docSnap.data().highlights as Record<string, Record<string, string>>;
+          setPreferences((previous) => ({
+            ...(previous || DEFAULT_PREFERENCES),
             highlights: {
-              ...(prev.highlights || {}),
-              ...docSnap.data().highlights
-            }
+              ...((previous && previous.highlights) || {}),
+              ...remoteHighlights,
+            },
           }));
         }
       } catch (error) {
@@ -75,9 +96,9 @@ export default function BibleScreen() {
     fetchUserHighlights();
   }, [userProfile?.uid]);
 
-  const handleUpdatePreferences = async (updates: any) => {
-    setPreferences((prev: any) => {
-      const newPrefs = { ...prev, ...updates };
+  const handleUpdatePreferences = async (updates: Partial<BiblePreferencesWithHighlights>) => {
+    setPreferences((previous) => {
+      const newPrefs = { ...(previous || DEFAULT_PREFERENCES), ...updates };
       saveUserPreferences(newPrefs);
       
       // Sync highlights to Firestore
@@ -90,19 +111,10 @@ export default function BibleScreen() {
     });
   };
 
-  const handleVersionChange = (id: string | number) => {
-    handleUpdatePreferences({ activeTranslation: id });
-  };
-
-  const refreshSavedVersions = async () => {
-    const versions = await getSavedVersions();
-    setSavedVersions(versions);
-  };
+  const safePreferences = preferences || DEFAULT_PREFERENCES;
+  const { leftText, rightText } = useBibleTopNav(books, safePreferences, savedVersions);
 
   if (!preferences) return null;
-
-  const currentBook = books.find(b => b.id === preferences.activeBook);
-  const activeVersionObj = savedVersions.find(v => String(v.id) === String(preferences.activeTranslation));
 
   return (
     <View style={styles.container}>
@@ -113,9 +125,9 @@ export default function BibleScreen() {
       />
 
       <TopNavBar 
-        leftText={`${currentBook?.title || currentBook?.name || preferences.activeBook} ${preferences.activeChapter}`}
+        leftText={leftText}
         onLeftPress={() => setIsBooksModalOpen(true)}
-        rightText={activeVersionObj?.local_abbreviation || activeVersionObj?.abbreviation || 'BIBLE'}
+        rightText={rightText}
         onRightPress={() => router.push('/version-manager')}
       />
 
@@ -126,7 +138,7 @@ export default function BibleScreen() {
         onClose={() => setIsBooksModalOpen(false)}
         books={books}
         onSelectChapter={(bookId, chapterNum) => {
-          handleUpdatePreferences({ activeBook: bookId, activeChapter: chapterNum });
+          handleUpdatePreferences({ activeBook: String(bookId), activeChapter: String(chapterNum) });
           setIsBooksModalOpen(false);
         }}
       />

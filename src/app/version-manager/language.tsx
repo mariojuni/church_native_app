@@ -1,11 +1,11 @@
 
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, TextInput } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, Search, Check } from 'lucide-react-native';
+import { useVersionContext } from '@/features/bible/presentation/context/VersionManagerContext';
+import { styles } from '@/features/bible/presentation/version-manager/styles';
 import { useRouter } from 'expo-router';
-import { useVersionContext } from './_context';
-import { styles } from './_styles';
+import { Check, ChevronLeft, Search } from 'lucide-react-native';
+import { useState } from 'react';
+import { ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function LanguageSelectScreen() {
   const router = useRouter();

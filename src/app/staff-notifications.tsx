@@ -1,44 +1,21 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
-import { useRouter, Stack } from 'expo-router';
-import { ChevronLeft, Check, X, BellOff, CheckCircle2, AlertCircle } from 'lucide-react-native';
-import { useScheduleStore, dismissNotification, Schedule } from '../store/useScheduleStore';
-import { useMemberStore } from '../store/useMemberStore';
+import { Stack, useRouter } from 'expo-router';
+import { AlertCircle, BellOff, CheckCircle2, ChevronLeft, X } from 'lucide-react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useStaffNotifications } from '@/features/staff/presentation/hooks/useStaffNotifications';
 
 export default function StaffNotificationsScreen() {
   const router = useRouter();
-  const { schedules } = useScheduleStore();
-  const { members } = useMemberStore();
+  const { dismissNotification, notifications } = useStaffNotifications();
 
-  // Extract all un-dismissed notifications
-  const notifications = schedules.flatMap((schedule: Schedule) => {
-    if (!schedule.duties) return [];
-    
-    return schedule.duties
-      .filter(d => d.status === 'accepted' || d.status === 'declined')
-      .map(d => {
-        const member = members.find(m => m.id === d.userId);
-        return {
-          eventId: schedule.id,
-          userId: d.userId,
-          memberName: member?.name || member?.displayName || 'Unknown Member',
-          role: d.role,
-          status: d.status,
-          eventName: schedule.event || 'Sunday Worship Service',
-          eventDate: new Date(`${schedule.date}T00:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
-        };
-      });
-  });
-
-  const handleDismiss = (eventId: string, userId: string, status: string) => {
-    dismissNotification(eventId, userId, status);
+  const handleDismiss = (scheduleId: string, userId: string, status: 'accepted' | 'declined') => {
+    dismissNotification(scheduleId, userId, status);
   };
 
   const handleDismissAll = () => {
-    notifications.forEach(n => {
-      dismissNotification(n.eventId, n.userId, n.status);
+    notifications.forEach((notification) => {
+      dismissNotification(notification.scheduleId, notification.userId, notification.action);
     });
   };
 
@@ -78,10 +55,10 @@ export default function StaffNotificationsScreen() {
           </View>
         ) : (
           notifications.map((notif, index) => {
-            const isAccepted = notif.status === 'accepted';
+            const isAccepted = notif.action === 'accepted';
             return (
               <TouchableOpacity 
-                key={`${notif.eventId}-${notif.userId}-${index}`} 
+                key={`${notif.id}-${index}`} 
                 style={[
                   styles.notificationCard, 
                   isAccepted ? styles.cardAccepted : styles.cardDeclined
@@ -100,11 +77,11 @@ export default function StaffNotificationsScreen() {
                       Duty {isAccepted ? 'Accepted' : 'Declined'}
                     </Text>
                   </View>
-                  <Text style={styles.dateText}>{notif.eventDate}</Text>
+                  <Text style={styles.dateText}>{notif.date}</Text>
                 </View>
                 
                 <Text style={styles.messageText}>
-                  <Text style={styles.boldText}>{notif.memberName}</Text> has {isAccepted ? 'accepted' : 'declined'} the role of <Text style={styles.boldText}>{notif.role}</Text> for the {notif.eventName}.
+                  <Text style={styles.boldText}>{notif.userName}</Text> has {isAccepted ? 'accepted' : 'declined'} the role of <Text style={styles.boldText}>{notif.role}</Text> for the {notif.event}.
                 </Text>
 
                 <View style={styles.actionRow}>
@@ -112,7 +89,7 @@ export default function StaffNotificationsScreen() {
                     style={styles.dismissBtn} 
                     onPress={(e) => {
                       e.stopPropagation();
-                      handleDismiss(notif.eventId, notif.userId, notif.status);
+                      handleDismiss(notif.scheduleId, notif.userId, notif.action);
                     }}
                   >
                     <X size={14} color="#6B7280" />

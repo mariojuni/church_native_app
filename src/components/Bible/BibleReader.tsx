@@ -1,15 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ActivityIndicator, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
-import { fetchChapterData } from '../../utils/bibleApi';
+import { useBibleReader } from '@/features/bible/presentation/hooks/useBibleReader';
 import { ChevronLeft, ChevronRight, Copy, X } from 'lucide-react-native';
-import * as Clipboard from 'expo-clipboard';
-
-const highlightColors = {
-  yellow: 'rgba(255, 235, 59, 0.4)',
-  pink: 'rgba(255, 101, 150, 0.3)',
-  blue: 'rgba(77, 139, 255, 0.3)',
-  green: 'rgba(74, 222, 128, 0.3)',
-};
+import { useMemo } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface BibleReaderProps {
   preferences: any;
@@ -24,101 +16,19 @@ interface Verse {
 }
 
 export default function BibleReader({ preferences, updatePreferences, books }: BibleReaderProps) {
-  const { activeTranslation, activeBook, activeChapter } = preferences;
-  const [chapterData, setChapterData] = useState<Verse[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedVerses, setSelectedVerses] = useState<string[]>([]);
-
-  const passageId = `${activeBook}.${activeChapter}`;
-  const chapterHighlights = (preferences.highlights && preferences.highlights[passageId]) || {};
-
-  useEffect(() => {
-    const loadChapter = async () => {
-      setLoading(true);
-      setSelectedVerses([]);
-      const data = await fetchChapterData(activeTranslation, passageId);
-      if (data) {
-        setChapterData(data);
-      } else {
-        setChapterData([]);
-      }
-      setLoading(false);
-    };
-    loadChapter();
-  }, [activeTranslation, activeBook, activeChapter]);
-
-  const toggleVerse = (verseNumber: string) => {
-    setSelectedVerses(prev => 
-      prev.includes(verseNumber) ? prev.filter(v => v !== verseNumber) : [...prev, verseNumber]
-    );
-  };
-
-  const handleCopy = async () => {
-    if (selectedVerses.length > 0) {
-      // Sort verses numerically before copying
-      const sortedSelected = [...selectedVerses].sort((a, b) => parseInt(a) - parseInt(b));
-      const versesText = sortedSelected.map(vNum => {
-        const verse = chapterData.find(v => v.verseNumber === vNum);
-        return verse ? verse.content : '';
-      }).join(' ');
-
-      await Clipboard.setStringAsync(versesText);
-      setSelectedVerses([]);
-      Alert.alert("Copied", "Verses copied to clipboard!");
-    }
-  };
-
-  const handleHighlight = (color: string) => {
-    const newHighlights = { ...(preferences.highlights || {}) };
-    if (!newHighlights[passageId]) newHighlights[passageId] = {};
-    
-    selectedVerses.forEach(vNum => {
-      if (color === 'clear') {
-         delete newHighlights[passageId][vNum];
-      } else {
-         newHighlights[passageId][vNum] = color;
-      }
-    });
-    
-    updatePreferences({ highlights: newHighlights });
-    setSelectedVerses([]);
-  };
-
-  const handlePrevChapter = () => {
-    const bookIndex = books.findIndex(b => b.id === activeBook);
-    if (bookIndex === -1) return;
-    const currentBook = books[bookIndex];
-    const chapterIndex = currentBook.chapters?.findIndex((c: any) => String(c.id) === String(activeChapter));
-
-    if (chapterIndex > 0) {
-      const prevChapter = currentBook.chapters[chapterIndex - 1];
-      updatePreferences({ activeChapter: prevChapter.id });
-    } else if (bookIndex > 0) {
-      const prevBook = books[bookIndex - 1];
-      if (prevBook && prevBook.chapters && prevBook.chapters.length > 0) {
-        const lastChapter = prevBook.chapters[prevBook.chapters.length - 1];
-        updatePreferences({ activeBook: prevBook.id, activeChapter: lastChapter.id });
-      }
-    }
-  };
-
-  const handleNextChapter = () => {
-    const bookIndex = books.findIndex(b => b.id === activeBook);
-    if (bookIndex === -1) return;
-    const currentBook = books[bookIndex];
-    const chapterIndex = currentBook.chapters?.findIndex((c: any) => String(c.id) === String(activeChapter));
-    
-    if (chapterIndex !== -1 && chapterIndex < (currentBook.chapters?.length - 1)) {
-      const nextChapter = currentBook.chapters[chapterIndex + 1];
-      updatePreferences({ activeChapter: nextChapter.id });
-    } else if (bookIndex < books.length - 1) {
-      const nextBook = books[bookIndex + 1];
-      if (nextBook && nextBook.chapters && nextBook.chapters.length > 0) {
-        const firstChapter = nextBook.chapters[0];
-        updatePreferences({ activeBook: nextBook.id, activeChapter: firstChapter.id });
-      }
-    }
-  };
+  const {
+    chapterData,
+    highlightColors,
+    loading,
+    selectedVerses,
+    verseBackgroundColor,
+    handleCopy,
+    handleHighlight,
+    handleNextChapter,
+    handlePrevChapter,
+    toggleVerse,
+  } = useBibleReader(preferences, books, updatePreferences);
+  const selectedVerseSet = useMemo(() => new Set(selectedVerses), [selectedVerses]);
 
   if (loading) {
     return (
@@ -136,10 +46,9 @@ export default function BibleReader({ preferences, updatePreferences, books }: B
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.chapterContent}>
-          {chapterData.map((verse) => {
-            const isSelected = selectedVerses.includes(verse.verseNumber);
-            const highlightColorName = chapterHighlights[verse.verseNumber];
-            const highlightColorValue = highlightColorName ? highlightColors[highlightColorName as keyof typeof highlightColors] : 'transparent';
+          {chapterData.map((verse: Verse) => {
+            const isSelected = selectedVerseSet.has(verse.verseNumber);
+            const highlightColorValue = verseBackgroundColor(verse.verseNumber);
             
             return (
               <Text 
@@ -210,6 +119,8 @@ const styles = StyleSheet.create({
     lineHeight: 29,
     fontFamily: 'Inter',
     color: '#1a1a1a',
+    flexWrap: 'wrap',
+    includeFontPadding: false, // Prevent extra padding on Android
   },
   verseWrap: {
     borderRadius: 4,
@@ -224,13 +135,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#FF6596',
-    textAlignVertical: 'top',
+    lineHeight: 29, // Match parent lineHeight for proper alignment
   },
   verseText: {
     fontSize: 18,
-    lineHeight: 29,
     fontFamily: 'Inter',
     color: '#1a1a1a',
+    // lineHeight inherited from parent chapterContent
   },
   navOverlay: {
     position: 'absolute',

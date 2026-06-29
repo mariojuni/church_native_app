@@ -1,21 +1,30 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, Text, StyleSheet, TouchableOpacity, TextInput, Image, 
-  Modal, ScrollView, ActivityIndicator, Alert
-} from 'react-native';
-import { 
-  Search, CheckCircle, X, Users, CalendarDays, 
-  UserPlus, Trash2, Clock, ShieldAlert, ChevronRight, ChevronLeft, User
+import {
+    CalendarDays,
+    CheckCircle,
+    Clock,
+    Search,
+    ShieldAlert,
+    Trash2,
+    User,
+    UserPlus,
+    Users
 } from 'lucide-react-native';
-import { db } from '../../firebase';
-import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
-import AppModal from '../ui/AppModal';
+import { useState } from 'react';
+import {
+    ActivityIndicator, Alert,
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
+} from 'react-native';
+import { attendanceRepository } from '../../features/attendance/data/attendance.repository';
+import { getTodayStr } from '../../features/attendance/domain/attendance.selectors';
+import { useAttendanceByDate } from '../../features/attendance/presentation/hooks/useAttendanceByDate';
 import CustomDatePicker from '../CustomDatePicker';
-
-const getTodayStr = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
+import AppModal from '../ui/AppModal';
 
 interface AttendanceTabProps {
   members: any[];
@@ -24,18 +33,11 @@ interface AttendanceTabProps {
 
 export default function AttendanceTab({ members, showStaffFeatures }: AttendanceTabProps) {
   const [filterDate, setFilterDate] = useState(getTodayStr());
-  const [filteredScannerCheckins, setFilteredScannerCheckins] = useState<any[]>([]);
   const [searchCheckedInQuery, setSearchCheckedInQuery] = useState('');
+  const { checkins: filteredScannerCheckins } = useAttendanceByDate(filterDate, { membersOnly: true });
 
   // Calendar State for Date Picker
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  const [calendarViewDate, setCalendarViewDate] = useState(new Date());
-
-  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-  const dayNames = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
-
-  const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
-  const getFirstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
   
   const formatLocal = (d: Date) => {
     const y = d.getFullYear();
@@ -45,12 +47,6 @@ export default function AttendanceTab({ members, showStaffFeatures }: Attendance
   };
 
   const openCalendar = () => {
-    if (filterDate) {
-      const [y, m, d] = filterDate.split('-');
-      setCalendarViewDate(new Date(Number(y), Number(m) - 1, Number(d)));
-    } else {
-      setCalendarViewDate(new Date());
-    }
     setIsCalendarOpen(true);
   };
   const closeCalendar = () => setIsCalendarOpen(false);
@@ -62,29 +58,6 @@ export default function AttendanceTab({ members, showStaffFeatures }: Attendance
   const [scanMessage, setScanMessage] = useState('');
 
   const [selectedCheckinMember, setSelectedCheckinMember] = useState<any>(null);
-
-  // Firestore sync listener for the selected date
-  useEffect(() => {
-    const q = query(
-      collection(db, 'attendance'),
-      where('date', '==', filterDate),
-      where('type', '==', 'member')
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      // Sort descending by timestamp
-      data.sort((a: any, b: any) => {
-        const timeA = a.timestamp?.toDate ? a.timestamp.toDate().getTime() : new Date(a.timestamp || 0).getTime();
-        const timeB = b.timestamp?.toDate ? b.timestamp.toDate().getTime() : new Date(b.timestamp || 0).getTime();
-        return timeB - timeA;
-      });
-      setFilteredScannerCheckins(data);
-    }, (error) => {
-      console.error("Error fetching filtered scanner check-ins:", error);
-    });
-
-    return () => unsubscribe();
-  }, [filterDate]);
 
   const handleManualCheckin = async (memberToScan: any) => {
     if (!memberToScan) return;
@@ -102,13 +75,12 @@ export default function AttendanceTab({ members, showStaffFeatures }: Attendance
         return;
       }
 
-      await addDoc(collection(db, 'attendance'), {
+      await attendanceRepository.createMemberCheckin({
         userId: memberToScan.id,
         name: memberToScan.name,
         role: memberToScan.role || 'Member',
         status: memberToScan.status || 'active',
         date: filterDate,
-        timestamp: serverTimestamp(),
         type: 'member'
       });
 
@@ -128,7 +100,7 @@ export default function AttendanceTab({ members, showStaffFeatures }: Attendance
 
   const handleDeleteCheckin = async (id: string) => {
     try {
-      await deleteDoc(doc(db, 'attendance', id));
+      await attendanceRepository.deleteCheckin(id);
       setSelectedCheckinMember(null);
     } catch (error) {
       console.error("Error deleting check-in:", error);
@@ -153,8 +125,6 @@ export default function AttendanceTab({ members, showStaffFeatures }: Attendance
   const displayedCheckins = filteredScannerCheckins.filter(c => 
     c.name?.toLowerCase().includes(searchCheckedInQuery.toLowerCase())
   );
-
-  const isToday = filterDate === getTodayStr();
 
   if (!showStaffFeatures) {
     return (

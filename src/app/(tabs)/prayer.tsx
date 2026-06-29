@@ -1,82 +1,43 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
-import { Heart, Search, CheckCircle, X } from 'lucide-react-native';
-import { usePrayers } from '../../hooks/usePrayers';
-import { db } from '../../firebase';
-import { doc, runTransaction, updateDoc } from 'firebase/firestore';
+import { CheckCircle, Heart, Search, X } from 'lucide-react-native';
+import { useMemo, useState } from 'react';
+import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { formatPrayerTimeAgo, getFilteredPrayers } from '../../features/prayer/domain/prayer.selectors';
+import type { Prayer, PrayerFilter } from '../../features/prayer/domain/prayer.types';
+import { usePrayerFeed } from '../../features/prayer/presentation/hooks/usePrayerFeed';
 import { useAuthStore } from '../../store/useAuthStore';
 
+const PRAYER_FILTERS: PrayerFilter[] = ['Recent', 'My Requests', 'Answered'];
+
 export default function PrayerScreen() {
-  const { currentUser } = useAuthStore();
-  const { prayers, loading } = usePrayers();
+  const currentUser = useAuthStore((state) => state.currentUser);
+  const { prayers, loading, togglePrayerLike, togglePrayerAnswered } = usePrayerFeed();
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState('Recent');
+  const [filter, setFilter] = useState<PrayerFilter>('Recent');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  const formatTimeAgo = (timestamp: any) => {
-    if (!timestamp) return 'Just now';
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    const seconds = Math.floor((new Date().getTime() - date) / 1000);
-    if (seconds < 60) return 'Just now';
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    return `${Math.floor(hours / 24)}d ago`;
-  };
-
   const handlePray = async (id: string) => {
-    if (!currentUser) return;
-    const docRef = doc(db, 'prayers', id);
-    const userId = currentUser.uid;
-
     try {
-      await runTransaction(db, async (transaction) => {
-        const sfDoc = await transaction.get(docRef);
-        if (!sfDoc.exists()) return;
-
-        const currentLikedBy = sfDoc.data().likedBy || [];
-        const currentLikes = sfDoc.data().likes || 0;
-        let newLikedBy, newLikes;
-
-        if (currentLikedBy.includes(userId)) {
-          newLikedBy = currentLikedBy.filter((uid: string) => uid !== userId);
-          newLikes = Math.max(0, currentLikes - 1);
-        } else {
-          newLikedBy = [...currentLikedBy, userId];
-          newLikes = currentLikes + 1;
-        }
-
-        transaction.update(docRef, { likedBy: newLikedBy, likes: newLikes });
-      });
+      if (!currentUser) return;
+      await togglePrayerLike(id, currentUser.uid);
     } catch (e) {
       console.error(e);
     }
   };
 
   const handleToggleAnswered = async (id: string, currentVal: boolean) => {
-    const docRef = doc(db, 'prayers', id);
     try {
-      await updateDoc(docRef, { answered: !currentVal });
+      await togglePrayerAnswered(id, currentVal);
     } catch (e) {
       console.error(e);
     }
   };
 
-  const filteredRequests = prayers.filter((req: any) => {
-    const matchesSearch = req.request?.toLowerCase().includes(search.toLowerCase()) ||
-                          req.name?.toLowerCase().includes(search.toLowerCase());
-                          
-    if (filter === 'My Requests') {
-      return matchesSearch && req.userId === currentUser?.uid;
-    }
-    if (filter === 'Answered') {
-      return matchesSearch && req.answered === true;
-    }
-    return matchesSearch;
-  });
+  const filteredRequests = useMemo(
+    () => getFilteredPrayers(prayers, search, filter, currentUser?.uid),
+    [prayers, search, filter, currentUser?.uid]
+  );
 
   const insets = useSafeAreaInsets();
 
@@ -112,7 +73,7 @@ export default function PrayerScreen() {
 
       <View style={styles.filterContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
-          {['Recent', 'My Requests', 'Answered'].map((f) => (
+        {PRAYER_FILTERS.map((f) => (
             <TouchableOpacity 
               key={f} 
               style={[
@@ -130,13 +91,17 @@ export default function PrayerScreen() {
       </View>
 
       <ScrollView contentContainerStyle={[styles.listContent, { paddingTop: Math.max(insets.top, 24) + 146 }]}>
-        {filteredRequests.length === 0 ? (
+        {loading ? (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>Loading prayer requests...</Text>
+          </View>
+        ) : filteredRequests.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>No prayer requests found.</Text>
           </View>
         ) : (
-          filteredRequests.map((req: any) => {
-            const isLiked = req.likedBy?.includes(currentUser?.uid);
+          filteredRequests.map((req: Prayer) => {
+            const isLiked = currentUser ? req.likedBy.includes(currentUser.uid) : false;
             return (
               <View key={req.id} style={[styles.card, req.answered && styles.cardAnswered]}>
                 <View style={styles.cardHeader}>
@@ -149,7 +114,7 @@ export default function PrayerScreen() {
                       </View>
                     )}
                   </View>
-                  <Text style={styles.cardTime}>{formatTimeAgo(req.createdAt)}</Text>
+                  <Text style={styles.cardTime}>{formatPrayerTimeAgo(req.createdAt)}</Text>
                 </View>
 
                 <Text style={styles.cardRequest}>{req.request}</Text>

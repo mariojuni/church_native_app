@@ -1,12 +1,11 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
-import { Settings, Users, MessageCircle, BarChart2, ChevronRight, ChevronLeft } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { BarChart2, ChevronLeft, ChevronRight, MessageCircle, Settings, Users } from 'lucide-react-native';
+import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuthStore } from '../store/useAuthStore';
 
 export default function MoreScreen() {
   const router = useRouter();
-  const { userProfile } = useAuthStore();
+  const userProfile = useAuthStore((state) => state.userProfile);
   
   const displayName = userProfile?.displayName || 'User';
   const displayRole = userProfile?.role || 'Member';

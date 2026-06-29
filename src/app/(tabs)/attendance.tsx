@@ -1,49 +1,30 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
-import { Users, Award, Calendar, QrCode, Bell } from 'lucide-react-native';
-import { useMemberStore } from '../../store/useMemberStore';
-import { useAuthStore } from '../../store/useAuthStore';
-import { useScheduleStore } from '../../store/useScheduleStore';
-import { db } from '../../firebase';
-import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { useRouter } from 'expo-router';
+import { Award, Bell, QrCode, Users } from 'lucide-react-native';
+import { useState } from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AttendanceTab from '../../components/Staff/AttendanceTab';
 import ScheduleTab from '../../components/Staff/ScheduleTab';
+import { getAttendanceStats, getTodayStr } from '../../features/attendance/domain/attendance.selectors';
+import { useAttendanceByDate } from '../../features/attendance/presentation/hooks/useAttendanceByDate';
+import { useAuthStore } from '../../store/useAuthStore';
+import { useMemberStore } from '../../store/useMemberStore';
+import { getUndismissedNotificationCount, useScheduleStore } from '../../store/useScheduleStore';
 
 export default function AttendanceScreen() {
-  const { members } = useMemberStore();
-  const { userProfile } = useAuthStore();
-  const { schedules } = useScheduleStore();
+  const members = useMemberStore((state) => state.members);
+  const userProfile = useAuthStore((state) => state.userProfile);
+  const schedules = useScheduleStore((state) => state.schedules);
   const isStaff = userProfile?.role?.toLowerCase() === 'staff';
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('reports');
-  const [todayCheckins, setTodayCheckins] = useState<any[]>([]);
-
-  const getTodayStr = () => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  };
-
-  useEffect(() => {
-    const todayStr = getTodayStr();
-    const q = query(collection(db, 'attendance'), where('date', '==', todayStr));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setTodayCheckins(data);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  const checkedInMembers = todayCheckins.filter(c => c.type === 'member');
-  const firstTimeVisitors = todayCheckins.filter(c => c.role === 'First-time Visitor' || c.status === 'new');
-  const totalRegisteredMembers = members.length || 1;
-  const checkedInRatio = Math.round((checkedInMembers.length / totalRegisteredMembers) * 100);
-
-  // Compute un-dismissed notifications across all upcoming schedules
-  const unDismissedNotifications = schedules.flatMap(s => s.duties || [])
-    .filter(d => d.status === 'accepted' || d.status === 'declined').length;
+  const { checkins: todayCheckins } = useAttendanceByDate(getTodayStr());
+  const { checkedInMembers, firstTimeVisitors, totalRegisteredMembers, checkedInRatio } = getAttendanceStats(
+    todayCheckins,
+    members.length
+  );
+  const unDismissedNotifications = getUndismissedNotificationCount(schedules);
 
   const insets = useSafeAreaInsets();
 

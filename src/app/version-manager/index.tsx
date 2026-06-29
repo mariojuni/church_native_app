@@ -1,12 +1,11 @@
 
-import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Alert, ActionSheetIOS, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Plus, Settings, MoreHorizontal } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { useVersionContext } from './_context';
-import { styles } from './_styles';
-import { removeVersion } from '../../utils/bibleApi';
+import { Plus, Settings } from 'lucide-react-native';
+import { ActionSheetIOS, Alert, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { removeVersion } from '@/features/bible/data/bible.repository';
+import { useVersionContext } from '@/features/bible/presentation/context/VersionManagerContext';
+import { styles } from '@/features/bible/presentation/version-manager/styles';
 
 export default function MyVersionsScreen() {
   const router = useRouter();
@@ -26,7 +25,7 @@ export default function MyVersionsScreen() {
             await refreshSavedVersions();
             if (String(activeTranslation) === String(id) && savedVersions.length > 1) {
                const remaining = savedVersions.filter((v: any) => String(v.id) !== String(id));
-               handleSelectVersion(remaining[0].id);
+               await handleSelectVersion(remaining[0].id);
             }
           }
         }
@@ -98,8 +97,8 @@ export default function MyVersionsScreen() {
                     styles.myVersionsListItem,
                     isActive && { backgroundColor: 'rgba(255, 101, 150, 0.04)', borderColor: '#FF6596', borderWidth: 1 }
                   ]}
-                  onPress={() => {
-                    handleSelectVersion(version.id);
+                  onPress={async () => {
+                    await handleSelectVersion(version.id);
                     router.back();
                   }}
                   onLongPress={() => handleOptions(version)}

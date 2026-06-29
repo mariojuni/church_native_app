@@ -1,13 +1,13 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { X, Save } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { Save, X } from 'lucide-react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../store/useAuthStore';
 
 export default function MyQRScreen() {
   const router = useRouter();
-  const { userProfile, currentUser } = useAuthStore();
+  const userProfile = useAuthStore((state) => state.userProfile);
+  const currentUser = useAuthStore((state) => state.currentUser);
   
   const qrId = userProfile?.id || currentUser?.uid || 'unknown';
   const qrName = userProfile?.name || currentUser?.displayName || 'Member';

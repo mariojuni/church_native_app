@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
+import { useState } from 'react';
+import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface CustomTimePickerProps {
   visible: boolean;
@@ -15,14 +15,12 @@ export default function CustomTimePicker({ visible, time, onConfirm, onCancel }:
   const [selectedMinute, setSelectedMinute] = useState(roundedMin === 60 ? 55 : roundedMin);
   const [isPM, setIsPM] = useState(time.getHours() >= 12);
 
-  useEffect(() => {
-    if (visible) {
-      setSelectedHour(time.getHours() % 12 || 12);
-      const m = Math.round(time.getMinutes() / 5) * 5;
-      setSelectedMinute(m === 60 ? 55 : m);
-      setIsPM(time.getHours() >= 12);
-    }
-  }, [visible, time]);
+  const handleShow = () => {
+    setSelectedHour(time.getHours() % 12 || 12);
+    const m = Math.round(time.getMinutes() / 5) * 5;
+    setSelectedMinute(m === 60 ? 55 : m);
+    setIsPM(time.getHours() >= 12);
+  };
 
   const HOURS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
   const MINUTES = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
@@ -38,7 +36,7 @@ export default function CustomTimePicker({ visible, time, onConfirm, onCancel }:
   };
 
   return (
-    <Modal visible={visible} animationType="fade" transparent={true} onRequestClose={onCancel}>
+    <Modal visible={visible} animationType="fade" transparent={true} onRequestClose={onCancel} onShow={handleShow}>
       <View style={styles.overlay}>
         <View style={styles.modalContainer}>
           <Text style={styles.title}>Select Time</Text>

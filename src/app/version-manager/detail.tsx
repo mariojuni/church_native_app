@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, CloudDownload, CheckCircle, ShieldCheck, Globe2 } from 'lucide-react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useVersionContext } from './_context';
-import { styles } from './_styles';
-import { downloadBibleOffline, saveVersion } from '../../utils/bibleApi';
+import { downloadBibleOffline, saveVersion } from '@/features/bible/data/bible.repository';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { CheckCircle, ChevronLeft, CloudDownload, Globe2, ShieldCheck } from 'lucide-react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useVersionContext } from '@/features/bible/presentation/context/VersionManagerContext';
+import { styles } from '@/features/bible/presentation/version-manager/styles';
 
 export default function VersionDetailScreen() {
   const router = useRouter();

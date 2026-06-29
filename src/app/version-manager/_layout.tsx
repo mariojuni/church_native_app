@@ -1,8 +1,8 @@
 
+import { VersionProvider } from '@/features/bible/presentation/context/VersionManagerContext';
+import { styles } from '@/features/bible/presentation/version-manager/styles';
 import { Stack } from 'expo-router';
 import { View } from 'react-native';
-import { VersionProvider } from './_context';
-import { styles } from './_styles';
 
 export default function VersionManagerLayout() {
   return (

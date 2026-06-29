@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Modal, KeyboardAvoidingView, Platform, Alert, Image } from 'react-native';
-import { X, Calendar as CalendarIcon, Clock, Users, ChevronDown, ChevronRight, User } from 'lucide-react-native';
+import { addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { Calendar as CalendarIcon, ChevronDown, ChevronRight, Clock, User, Users, X } from 'lucide-react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { Alert, FlatList, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { db } from '../../firebase';
+import { useMemberStore } from '../../store/useMemberStore';
 import CustomDatePicker from '../CustomDatePicker';
 import CustomTimePicker from '../CustomTimePicker';
-import { db } from '../../firebase';
-import { collection, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
-import { useMemberStore } from '../../store/useMemberStore';
 
 const ROLES = [
   { id: 'presider', label: 'Presider' },
@@ -25,78 +25,114 @@ interface AddScheduleModalProps {
   eventToEdit?: any;
 }
 
+type MemberSelectionItem =
+  | { id: '__clear__'; type: 'clear' }
+  | {
+      avatar?: string;
+      id: string;
+      name?: string;
+      role?: string;
+      type: 'member';
+    };
+
+const DEFAULT_EVENT = 'Sunday Worship Service';
+const DEFAULT_LOCATION = 'Main Sanctuary';
+
+const createDefaultStartTime = () => new Date(new Date().setHours(9, 0, 0, 0));
+const createDefaultEndTime = () => new Date(new Date().setHours(11, 0, 0, 0));
+
+const parseTime = (timeStr: string) => {
+  if (!timeStr) return new Date();
+  const [t, ampm] = timeStr.split(' ');
+  const [hStr, mStr] = t.split(':');
+  let h = parseInt(hStr, 10);
+  if (ampm === 'PM' && h !== 12) h += 12;
+  if (ampm === 'AM' && h === 12) h = 0;
+  const d = new Date();
+  d.setHours(h, parseInt(mStr || '0', 10), 0, 0);
+  return d;
+};
+
+const buildInitialAssignments = (duties?: { role: string; status: string; userId: string }[]) => {
+  if (!duties) return {};
+
+  const initialAssignments: Record<string, string> = {};
+  duties.forEach((duty) => {
+   if (
+     duty.role.toLowerCase() !== 'attendee' &&
+     duty.status !== 'declined' &&
+     duty.status !== 'declined_dismissed'
+   ) {
+     const roleDef = ROLES.find((role) => role.label === duty.role);
+     if (roleDef) {
+       initialAssignments[roleDef.id] = duty.userId;
+     }
+   }
+  });
+  return initialAssignments;
+};
+
+const buildInitialModalState = (eventToEdit?: any) => {
+  if (!eventToEdit) {
+   return {
+     assignments: {},
+     date: new Date(),
+     endTime: createDefaultEndTime(),
+     event: DEFAULT_EVENT,
+     location: DEFAULT_LOCATION,
+     showDuties: false,
+     startTime: createDefaultStartTime(),
+   };
+  }
+
+  const nextDate = new Date();
+  if (eventToEdit.date) {
+   const [y, m, d] = eventToEdit.date.split('-');
+   nextDate.setFullYear(Number(y), Number(m) - 1, Number(d));
+  }
+
+  return {
+   assignments: buildInitialAssignments(eventToEdit.duties),
+   date: nextDate,
+   endTime: eventToEdit.endTime ? parseTime(eventToEdit.endTime) : createDefaultEndTime(),
+   event: eventToEdit.event || '',
+   location: eventToEdit.location || '',
+   showDuties: true,
+   startTime: eventToEdit.time ? parseTime(eventToEdit.time) : createDefaultStartTime(),
+  };
+};
+
 export default function AddScheduleModal({ isOpen, onClose, eventToEdit }: AddScheduleModalProps) {
-  const { members } = useMemberStore();
-  const [event, setEvent] = useState('Sunday Worship Service');
-  const [date, setDate] = useState(new Date());
+  const members = useMemberStore((state) => state.members);
+  const initialState = buildInitialModalState(eventToEdit);
+  const [event, setEvent] = useState(initialState.event);
+  const [date, setDate] = useState(initialState.date);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [startTime, setStartTime] = useState(new Date(new Date().setHours(9, 0, 0, 0)));
+  const [startTime, setStartTime] = useState(initialState.startTime);
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
-  const [endTime, setEndTime] = useState(new Date(new Date().setHours(11, 0, 0, 0)));
+  const [endTime, setEndTime] = useState(initialState.endTime);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
-  const [location, setLocation] = useState('Main Sanctuary');
+  const [location, setLocation] = useState(initialState.location);
   
   // Store assigned member IDs by role ID
-  const [assignments, setAssignments] = useState<Record<string, string>>({});
+  const [assignments, setAssignments] = useState<Record<string, string>>(initialState.assignments);
   const [selectingRole, setSelectingRole] = useState<string | null>(null);
   
-  const [showDuties, setShowDuties] = useState(false);
-
-  useEffect(() => {
-    if (isOpen) {
-      if (eventToEdit) {
-        setEvent(eventToEdit.event || '');
-        setLocation(eventToEdit.location || '');
-        if (eventToEdit.date) {
-          const [y, m, d] = eventToEdit.date.split('-');
-          setDate(new Date(Number(y), Number(m) - 1, Number(d)));
-        }
-        
-        const parseTime = (timeStr: string) => {
-          if (!timeStr) return new Date();
-          const [t, ampm] = timeStr.split(' ');
-          const [hStr, mStr] = t.split(':');
-          let h = parseInt(hStr, 10);
-          if (ampm === 'PM' && h !== 12) h += 12;
-          if (ampm === 'AM' && h === 12) h = 0;
-          const d = new Date();
-          d.setHours(h, parseInt(mStr || '0', 10), 0, 0);
-          return d;
-        };
-
-        if (eventToEdit.time) setStartTime(parseTime(eventToEdit.time));
-        if (eventToEdit.endTime) setEndTime(parseTime(eventToEdit.endTime));
-
-        // parse duties
-        if (eventToEdit && eventToEdit.duties) {
-          const initialAssignments: Record<string, string> = {};
-          eventToEdit.duties.forEach((duty: any) => {
-            if (
-              duty.role.toLowerCase() !== 'attendee' && 
-              duty.status !== 'declined' && 
-              duty.status !== 'declined_dismissed'
-            ) {
-              const roleDef = ROLES.find(r => r.label === duty.role);
-              if (roleDef) initialAssignments[roleDef.id] = duty.userId;
-            }
-          });
-          setAssignments(initialAssignments);
-        } else {
-          setAssignments({});
-        }
-        setShowDuties(true); // Default open if editing
-      } else {
-        // Reset
-        setEvent('Sunday Worship Service');
-        setDate(new Date());
-        setStartTime(new Date(new Date().setHours(9, 0, 0, 0)));
-        setEndTime(new Date(new Date().setHours(11, 0, 0, 0)));
-        setLocation('Main Sanctuary');
-        setAssignments({});
-        setShowDuties(false);
-      }
-    }
-  }, [isOpen, eventToEdit]);
+  const [showDuties, setShowDuties] = useState(initialState.showDuties);
+  const memberById = useMemo(() => new Map(members.map((member) => [member.id, member])), [members]);
+  const selectionItems = useMemo<MemberSelectionItem[]>(
+    () => [
+      { id: '__clear__', type: 'clear' },
+      ...members.map((member) => ({
+        avatar: member.avatar,
+        id: member.id,
+        name: member.name,
+        role: member.role,
+        type: 'member' as const,
+      })),
+    ],
+    [members]
+  );
 
   const formatDateForUI = (d: Date) => {
     return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
@@ -161,7 +197,7 @@ export default function AddScheduleModal({ isOpen, onClose, eventToEdit }: AddSc
     }
   };
 
-  const assignMember = (userId: string | null) => {
+  const assignMember = useCallback((userId: string | null) => {
     if (selectingRole) {
       if (userId === null) {
         const newAssignments = { ...assignments };
@@ -172,7 +208,46 @@ export default function AddScheduleModal({ isOpen, onClose, eventToEdit }: AddSc
       }
       setSelectingRole(null);
     }
-  };
+  }, [assignments, selectingRole]);
+
+  const renderSelectionItem = useCallback(
+    ({ item }: { item: MemberSelectionItem }) => {
+      if (item.type === 'clear') {
+        return (
+          <TouchableOpacity style={styles.memberItem} onPress={() => assignMember(null)}>
+            <View style={styles.memberItemLeft}>
+              <View style={[styles.modalAvatar, styles.clearAvatar]}>
+                <X size={20} color="#EF4444" />
+              </View>
+              <View>
+                <Text style={[styles.memberName, styles.clearText]}>Unassign / Clear Role</Text>
+                <Text style={styles.memberRole}>Remove assigned member</Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+        );
+      }
+
+      return (
+        <TouchableOpacity style={styles.memberItem} onPress={() => assignMember(item.id)}>
+          <View style={styles.memberItemLeft}>
+            {item.avatar ? (
+              <Image source={{ uri: item.avatar }} style={styles.modalAvatar} />
+            ) : (
+              <View style={[styles.modalAvatar, styles.fallbackAvatar]}>
+                <User size={20} color="#999" />
+              </View>
+            )}
+            <View>
+              <Text style={styles.memberName}>{item.name}</Text>
+              <Text style={styles.memberRole}>{item.role || 'Member'}</Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+      );
+    },
+    [assignMember]
+  );
 
   return (
     <Modal visible={isOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
@@ -270,7 +345,7 @@ export default function AddScheduleModal({ isOpen, onClose, eventToEdit }: AddSc
             
             {showDuties && ROLES.map(role => {
               const assignedUserId = assignments[role.id];
-              const assignedMember = assignedUserId ? members.find(m => m.id === assignedUserId) : null;
+              const assignedMember = assignedUserId ? memberById.get(assignedUserId) : null;
 
               return (
                 <View key={role.id} style={styles.roleRow}>
@@ -306,36 +381,19 @@ export default function AddScheduleModal({ isOpen, onClose, eventToEdit }: AddSc
                 <X size={20} color="#666" />
               </TouchableOpacity>
             </View>
-            <ScrollView style={styles.selectionList}>
-              <TouchableOpacity style={styles.memberItem} onPress={() => assignMember(null)}>
-                <View style={styles.memberItemLeft}>
-                  <View style={[styles.modalAvatar, { backgroundColor: '#FEE2E2', alignItems: 'center', justifyContent: 'center' }]}>
-                    <X size={20} color="#EF4444" />
-                  </View>
-                  <View>
-                    <Text style={[styles.memberName, { color: '#EF4444' }]}>Unassign / Clear Role</Text>
-                    <Text style={styles.memberRole}>Remove assigned member</Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-              {members.map(m => (
-                <TouchableOpacity key={m.id} style={styles.memberItem} onPress={() => assignMember(m.id)}>
-                  <View style={styles.memberItemLeft}>
-                    {m.avatar ? (
-                      <Image source={{ uri: m.avatar }} style={styles.modalAvatar} />
-                    ) : (
-                      <View style={[styles.modalAvatar, { backgroundColor: '#f0f0f0', alignItems: 'center', justifyContent: 'center' }]}>
-                        <User size={20} color="#999" />
-                      </View>
-                    )}
-                    <View>
-                      <Text style={styles.memberName}>{m.name}</Text>
-                      <Text style={styles.memberRole}>{m.role || 'Member'}</Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            <FlatList
+              data={selectionItems}
+              renderItem={renderSelectionItem}
+              keyExtractor={(item) => item.id}
+              style={styles.selectionList}
+              contentContainerStyle={styles.selectionListContent}
+              initialNumToRender={12}
+              maxToRenderPerBatch={16}
+              updateCellsBatchingPeriod={30}
+              windowSize={8}
+              removeClippedSubviews={Platform.OS === 'android'}
+              keyboardShouldPersistTaps="handled"
+            />
           </View>
         </View>
       )}
@@ -379,10 +437,14 @@ const styles = StyleSheet.create({
   selectionSheet: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '70%' },
   selectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
   selectionTitle: { fontSize: 18, fontWeight: '700', color: '#1a1a1a' },
-  selectionList: { padding: 24 },
+  selectionList: { flexGrow: 0 },
+  selectionListContent: { padding: 24 },
   memberItem: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
   memberItemLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   modalAvatar: { width: 40, height: 40, borderRadius: 12 },
+  clearAvatar: { backgroundColor: '#FEE2E2', alignItems: 'center', justifyContent: 'center' },
+  fallbackAvatar: { backgroundColor: '#f0f0f0', alignItems: 'center', justifyContent: 'center' },
+  clearText: { color: '#EF4444' },
   memberName: { fontSize: 15, fontWeight: '700', color: '#1a1a1a', marginBottom: 2 },
   memberRole: { fontSize: 11, color: '#888', textTransform: 'uppercase', fontWeight: '600' },
   collapsibleHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },

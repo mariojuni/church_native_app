@@ -1,8 +1,9 @@
-import React, { useRef, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Animated, Easing, Text } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Plus, QrCode, CalendarPlus, HeartHandshake, HandHeart, UserPlus } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { HandHeart, HeartHandshake, Plus, QrCode } from 'lucide-react-native';
+import { useMemo, useState } from 'react';
+import { Animated, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { getFabMenuItems } from '@/features/navigation/presentation/fabMenuItems';
 
 interface FabMenuProps {
   isStaff: boolean;
@@ -11,7 +12,7 @@ interface FabMenuProps {
 export default function FabMenu({ isStaff }: FabMenuProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
-  const animation = useRef(new Animated.Value(0)).current;
+  const animation = useMemo(() => new Animated.Value(0), []);
 
   const toggleMenu = () => {
     const toValue = isOpen ? 0 : 1;
@@ -66,17 +67,12 @@ export default function FabMenu({ isStaff }: FabMenuProps) {
     ]
   };
 
-  // Build menu items
   const menuItems = [
-    { icon: <QrCode size={20} color="#FF6596" />, route: '/scanner' },
-    { icon: <HeartHandshake size={20} color="#FF6596" />, route: '/(tabs)/prayer' },
-    { icon: <HandHeart size={20} color="#FF6596" />, route: '/giving' },
+    { icon: QrCode, key: 'scanner', route: '/scanner' },
+    { icon: HeartHandshake, key: 'prayer', route: '/(tabs)/prayer' },
+    { icon: HandHeart, key: 'giving', route: '/giving' },
+    ...getFabMenuItems(isStaff),
   ];
-
-  if (isStaff) {
-    menuItems.push({ icon: <CalendarPlus size={20} color="#FF6596" />, route: '/(tabs)/' });
-    menuItems.push({ icon: <UserPlus size={20} color="#FF6596" />, route: '/(tabs)/attendance' });
-  }
 
   return (
     <View style={styles.container} pointerEvents="box-none">
@@ -91,13 +87,13 @@ export default function FabMenu({ isStaff }: FabMenuProps) {
 
       {/* Sub Items */}
       {menuItems.map((item, index) => (
-        <Animated.View key={index} style={[styles.subItemContainer, getSubItemStyle(index)]}>
+        <Animated.View key={item.key} style={[styles.subItemContainer, getSubItemStyle(index)]}>
           <TouchableOpacity 
             style={styles.subItem} 
             onPress={() => handlePress(item.route)}
             activeOpacity={0.8}
           >
-            {item.icon}
+            <item.icon size={20} color="#FF6596" />
           </TouchableOpacity>
         </Animated.View>
       ))}

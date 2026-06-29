@@ -1,25 +1,26 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
 import { useFonts } from 'expo-font';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import 'react-native-reanimated';
 import { useColorScheme } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import 'react-native-reanimated';
+import '../global.css';
 import { useAuthStore } from '../store/useAuthStore';
 import { useMemberStore } from '../store/useMemberStore';
-import '../global.css';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
-
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [loaded] = useFonts({});
 
-  const { initialized, currentUser, initializeAuthListener } = useAuthStore();
-  const { initializeMembersListener, initializeServicesListener } = useMemberStore();
+  const initialized = useAuthStore((state) => state.initialized);
+  const currentUser = useAuthStore((state) => state.currentUser);
+  const initializeAuthListener = useAuthStore((state) => state.initializeAuthListener);
+  const initializeMembersListener = useMemberStore((state) => state.initializeMembersListener);
+  const initializeServicesListener = useMemberStore((state) => state.initializeServicesListener);
   const segments = useSegments();
   const router = useRouter();
 
@@ -43,7 +44,7 @@ export default function RootLayout() {
       }
     };
     initOfflineBible();
-  }, []);
+  }, [initializeAuthListener, initializeMembersListener, initializeServicesListener]);
 
   useEffect(() => {
     if (loaded && initialized) {
@@ -63,7 +64,7 @@ export default function RootLayout() {
       // Redirect to main app
       router.replace('/(tabs)');
     }
-  }, [currentUser, initialized, segments]);
+  }, [currentUser, initialized, segments, router]);
 
   if (!loaded || !initialized) {
     return null;

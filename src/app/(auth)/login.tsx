@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useAuthStore } from '../../store/useAuthStore';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Mail, Lock, AlertCircle } from 'lucide-react-native';
 import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
+import { AlertCircle, Lock, Mail } from 'lucide-react-native';
+import { useState } from 'react';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -13,7 +13,8 @@ export default function LoginScreen() {
   const [errorMsg, setErrorMsg] = useState('');
   
   const router = useRouter();
-  const { login, loginWithGoogle } = useAuthStore();
+  const login = useAuthStore((state) => state.login);
+  const loginWithGoogle = useAuthStore((state) => state.loginWithGoogle);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -127,7 +128,7 @@ export default function LoginScreen() {
             </TouchableOpacity>
 
             <View style={styles.footer}>
-              <Text style={styles.footerText}>Don't have an account? </Text>
+              <Text style={styles.footerText}>Don&apos;t have an account? </Text>
               <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
                 <Text style={styles.footerLink}>Sign up</Text>
               </TouchableOpacity>
