@@ -1,6 +1,6 @@
 import { useBibleReader } from '@/features/bible/presentation/hooks/useBibleReader';
 import { ChevronLeft, ChevronRight, Copy, X } from 'lucide-react-native';
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface BibleReaderProps {
@@ -15,7 +15,29 @@ interface Verse {
   content: string;
 }
 
+// Sanitize text to remove problematic Unicode characters and HTML entities
+const sanitizeVerseText = (text: string): string => {
+  if (!text) return '';
+  
+  return text
+    // Remove zero-width characters and other invisible Unicode
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    // Remove any remaining HTML tags
+    .replace(/<[^>]*>/g, '')
+    // Decode common HTML entities
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    // Normalize whitespace
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
 export default function BibleReader({ preferences, updatePreferences, books }: BibleReaderProps) {
+  const scrollRef = useRef<ScrollView>(null);
   const {
     chapterData,
     highlightColors,
@@ -30,6 +52,16 @@ export default function BibleReader({ preferences, updatePreferences, books }: B
   } = useBibleReader(preferences, books, updatePreferences);
   const selectedVerseSet = useMemo(() => new Set(selectedVerses), [selectedVerses]);
 
+  const onNextChapter = () => {
+    handleNextChapter();
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  };
+
+  const onPrevChapter = () => {
+    handlePrevChapter();
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -40,8 +72,9 @@ export default function BibleReader({ preferences, updatePreferences, books }: B
 
   return (
     <View style={styles.container}>
-      <ScrollView 
-        style={styles.scrollView} 
+      <ScrollView
+        ref={scrollRef}
+        style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
@@ -49,19 +82,31 @@ export default function BibleReader({ preferences, updatePreferences, books }: B
           {chapterData.map((verse: Verse) => {
             const isSelected = selectedVerseSet.has(verse.verseNumber);
             const highlightColorValue = verseBackgroundColor(verse.verseNumber);
+            const sanitizedContent = sanitizeVerseText(verse.content);
+            
+            // Debug logging for Genesis 2:23
+            if (verse.verseNumber === '23' && preferences.activeBook === 'GEN' && preferences.activeChapter === '2') {
+              console.log('Genesis 2:23 DEBUG:', {
+                raw: verse.content,
+                sanitized: sanitizedContent,
+                rawLength: verse.content?.length,
+                sanitizedLength: sanitizedContent.length,
+                rawBytes: JSON.stringify(verse.content),
+              });
+            }
             
             return (
-              <Text 
-                key={verse.id} 
+              <Text
+                key={verse.id}
                 onPress={() => toggleVerse(verse.verseNumber)}
                 style={[
                   styles.verseWrap,
                   { backgroundColor: highlightColorValue },
-                  isSelected && styles.verseSelected
+                  isSelected && styles.verseSelected,
                 ]}
               >
-                <Text style={styles.verseLabel}>{verse.verseNumber}</Text>
-                <Text style={styles.verseText}> {verse.content} </Text>
+                <Text style={styles.verseLabel}> {verse.verseNumber} </Text>
+                <Text style={styles.verseText}>{sanitizedContent}</Text>
               </Text>
             );
           })}
@@ -71,11 +116,11 @@ export default function BibleReader({ preferences, updatePreferences, books }: B
       {/* Navigation Arrows overlay */}
       {selectedVerses.length === 0 && (
         <View style={styles.navOverlay} pointerEvents="box-none">
-          <TouchableOpacity style={styles.navBtn} onPress={handlePrevChapter}>
+          <TouchableOpacity style={styles.navBtn} onPress={onPrevChapter}>
             <ChevronLeft size={20} color="#FF6596" />
           </TouchableOpacity>
           <View style={{ flex: 1 }} />
-          <TouchableOpacity style={styles.navBtn} onPress={handleNextChapter}>
+          <TouchableOpacity style={styles.navBtn} onPress={onNextChapter}>
             <ChevronRight size={20} color="#FF6596" />
           </TouchableOpacity>
         </View>
@@ -105,8 +150,7 @@ export default function BibleReader({ preferences, updatePreferences, books }: B
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fafafa' },
+const styles = StyleSheet.create({  container: { flex: 1, backgroundColor: '#fafafa' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   scrollView: { flex: 1 },
   scrollContent: {
@@ -119,8 +163,6 @@ const styles = StyleSheet.create({
     lineHeight: 29,
     fontFamily: 'Inter',
     color: '#1a1a1a',
-    flexWrap: 'wrap',
-    includeFontPadding: false, // Prevent extra padding on Android
   },
   verseWrap: {
     borderRadius: 4,
@@ -133,15 +175,16 @@ const styles = StyleSheet.create({
   },
   verseLabel: {
     fontSize: 13,
+    lineHeight: 29,
     fontWeight: '600',
     color: '#FF6596',
-    lineHeight: 29, // Match parent lineHeight for proper alignment
+    fontFamily: 'Inter',
   },
   verseText: {
     fontSize: 18,
+    lineHeight: 29,
     fontFamily: 'Inter',
     color: '#1a1a1a',
-    // lineHeight inherited from parent chapterContent
   },
   navOverlay: {
     position: 'absolute',
