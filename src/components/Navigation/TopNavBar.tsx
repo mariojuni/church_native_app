@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
 
 interface TopNavBarProps {
   leftText: string;
@@ -14,7 +15,8 @@ export default function TopNavBar({ leftText, onLeftPress, rightText, onRightPre
 
   return (
     <View style={[styles.headerContainer, { paddingTop: Math.max(insets.top, 24) }]} pointerEvents="box-none">
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255, 255, 255, 0.92)' }]} />
+      <BlurView intensity={80} tint="light" style={StyleSheet.absoluteFill} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255, 255, 255, 0.6)' }]} pointerEvents="none" />
       
       <View style={styles.content}>
         <View style={styles.pillContainer}>

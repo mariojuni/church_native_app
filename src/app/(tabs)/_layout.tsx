@@ -5,6 +5,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
 import FabMenu from '../../components/Navigation/FabMenu';
 
 function CustomTabBar({ state, descriptors, navigation, isStaff }: any) {
@@ -14,8 +15,9 @@ function CustomTabBar({ state, descriptors, navigation, isStaff }: any) {
   return (
     <View style={[styles.navArea, { bottom: Math.max(insets.bottom, 16) }]} pointerEvents="box-none">
       <View style={styles.navContainer}>
-        {/* Standard semi-transparent background for both platforms */}
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255, 255, 255, 0.92)', borderRadius: 40 }]} />
+        {/* Standard frosted background for both platforms */}
+        <BlurView intensity={80} tint="light" style={[StyleSheet.absoluteFill, { borderRadius: 40, overflow: 'hidden' }]} />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255, 255, 255, 0.6)', borderRadius: 40 }]} pointerEvents="none" />
           
           {state.routes.map((route: any, index: number) => {
             const { options } = descriptors[route.key];

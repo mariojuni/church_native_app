@@ -11,6 +11,9 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import AppModal from '../../components/ui/AppModal';
 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
+
 export default function HomeScreen() {
   const { userProfile, currentUser } = useAuthStore();
   const { members } = useMemberStore();
@@ -117,19 +120,26 @@ export default function HomeScreen() {
     return `${Math.floor(hours / 24)}d ago`;
   };
 
+  const insets = useSafeAreaInsets();
+
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>Hello,</Text>
-          <Text style={styles.title}>{displayName}!</Text>
+    <View style={styles.container}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 24) }]} pointerEvents="box-none">
+        <BlurView intensity={80} tint="light" style={StyleSheet.absoluteFill} />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,0.6)' }]} pointerEvents="none" />
+        
+        <View style={styles.headerContent}>
+          <View>
+            <Text style={styles.greeting}>Hello,</Text>
+            <Text style={styles.title}>{displayName}!</Text>
+          </View>
+          <TouchableOpacity onPress={() => router.push('/my-qr')}>
+            <Image source={{ uri: 'https://i.pravatar.cc/150?img=11' }} style={styles.avatar} />
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity onPress={() => router.push('/my-qr')}>
-          <Image source={{ uri: 'https://i.pravatar.cc/150?img=11' }} style={styles.avatar} />
-        </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: Math.max(insets.top, 24) + 104 }]} showsVerticalScrollIndicator={false}>
         {/* ─── Ministerial Duty Section ─────────────────────────────────── */}
         {myUpcomingDuties.length > 0 && (
           <View>
@@ -417,13 +427,28 @@ export default function HomeScreen() {
           </View>
         </AppModal>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FAFAFA' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', padding: 24, paddingBottom: 12 },
+  header: { 
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+  },
   greeting: { fontSize: 16, color: '#666' },
   title: { fontSize: 28, fontWeight: 'bold', color: '#1a1a1a' },
   avatar: { width: 48, height: 48, borderRadius: 24 },

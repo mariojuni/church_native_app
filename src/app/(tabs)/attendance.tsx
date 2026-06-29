@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
 import { Users, Award, Calendar, QrCode, Bell } from 'lucide-react-native';
 import { useMemberStore } from '../../store/useMemberStore';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -44,9 +45,15 @@ export default function AttendanceScreen() {
   const unDismissedNotifications = schedules.flatMap(s => s.duties || [])
     .filter(d => d.status === 'accepted' || d.status === 'declined').length;
 
+  const insets = useSafeAreaInsets();
+
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
+    <View style={styles.container}>
+      <View style={[styles.frostedHeader, { paddingTop: Math.max(insets.top, 24) }]} pointerEvents="box-none">
+        <BlurView intensity={80} tint="light" style={StyleSheet.absoluteFill} />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,0.6)' }]} pointerEvents="none" />
+
+        <View style={styles.header}>
         <View>
           <Text style={styles.title}>Staff</Text>
         </View>
@@ -82,9 +89,10 @@ export default function AttendanceScreen() {
             </TouchableOpacity>
           ))}
         </ScrollView>
+        </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingTop: Math.max(insets.top, 24) + 146 }]}>
         {activeTab === 'reports' && (
           <View>
             <View style={styles.statsRow}>
@@ -134,17 +142,27 @@ export default function AttendanceScreen() {
           <ScheduleTab />
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FAFAFA' },
+  frostedHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+  },
   header: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center', 
-    padding: 24, 
+    paddingHorizontal: 24, 
+    paddingTop: 16, 
     paddingBottom: 16 
   },
   headerRight: {

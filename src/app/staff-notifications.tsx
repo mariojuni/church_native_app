@@ -1,5 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
 import { useRouter, Stack } from 'expo-router';
 import { ChevronLeft, Check, X, BellOff, CheckCircle2, AlertCircle } from 'lucide-react-native';
 import { useScheduleStore, dismissNotification, Schedule } from '../store/useScheduleStore';
@@ -40,12 +42,18 @@ export default function StaffNotificationsScreen() {
     });
   };
 
+  const insets = useSafeAreaInsets();
+
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+      <View style={styles.container}>
+      <View style={[styles.frostedHeader, { paddingTop: Math.max(insets.top, 24) }]} pointerEvents="box-none">
+        <BlurView intensity={80} tint="light" style={StyleSheet.absoluteFill} />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,0.6)' }]} pointerEvents="none" />
+        
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <ChevronLeft size={24} color="#1a1a1a" />
         </TouchableOpacity>
         <Text style={styles.title}>Notifications</Text>
@@ -56,9 +64,10 @@ export default function StaffNotificationsScreen() {
         ) : (
           <View style={{ width: 60 }} />
         )}
+        </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingTop: Math.max(insets.top, 24) + 104 }]}>
         {notifications.length === 0 ? (
           <View style={styles.emptyState}>
             <View style={styles.emptyIconBg}>
@@ -115,7 +124,7 @@ export default function StaffNotificationsScreen() {
           })
         )}
       </ScrollView>
-    </SafeAreaView>
+      </View>
     </>
   );
 }
@@ -123,7 +132,16 @@ export default function StaffNotificationsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FAFAFA',
+  },
+  frostedHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
   },
   header: {
     flexDirection: 'row',
@@ -131,9 +149,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
   backBtn: {
     width: 40,
