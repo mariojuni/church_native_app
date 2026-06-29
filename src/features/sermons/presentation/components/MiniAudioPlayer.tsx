@@ -1,0 +1,217 @@
+import { View, Text, StyleSheet, TouchableOpacity, Image, Pressable } from 'react-native';
+import { Play, Pause, X } from 'lucide-react-native';
+import Animated, { 
+  useAnimatedStyle, 
+  useSharedValue, 
+  withSpring,
+  withTiming,
+  SlideInDown,
+  SlideOutDown
+} from 'react-native-reanimated';
+import { useRouter } from 'expo-router';
+import { useSermonStore } from '@/store/useSermonStore';
+import { useTheme } from '@/hooks/use-theme';
+import { Colors, Spacing } from '@/constants/theme';
+import { BlurView } from 'expo-blur';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
+
+interface MiniAudioPlayerProps {
+  onPlayPause: () => void;
+  onClose: () => void;
+}
+
+export function MiniAudioPlayer({ onPlayPause, onClose }: MiniAudioPlayerProps) {
+  const router = useRouter();
+  const colors = useTheme();
+  const insets = useSafeAreaInsets();
+  
+  const { currentSermon, isPlaying, currentPosition } = useSermonStore();
+
+  const handlePlayPause = async () => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onPlayPause();
+  };
+
+  const handleExpand = () => {
+    if (currentSermon) {
+      router.push({
+        pathname: '/audio-player',
+        params: { id: currentSermon.id }
+      });
+    }
+  };
+
+  const handleClose = async () => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    onClose();
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  if (!currentSermon) return null;
+
+  const progress = currentSermon.duration > 0 
+    ? (currentPosition / currentSermon.duration) * 100 
+    : 0;
+
+  return (
+    <Animated.View 
+      entering={SlideInDown.springify()}
+      exiting={SlideOutDown.springify()}
+      style={[
+        styles.container, 
+        { 
+          bottom: Math.max(insets.bottom, 16) + 60, // Above tab bar
+        }
+      ]}
+    >
+      <BlurView 
+        intensity={80} 
+        tint={colorScheme === 'dark' ? 'dark' : 'light'}
+        style={[StyleSheet.absoluteFill, { borderRadius: 12 }]} 
+      />
+      
+      {/* Progress Bar */}
+      <View style={styles.progressBarContainer}>
+        <View style={[styles.progressBar, { backgroundColor: colors.backgroundElement }]}>
+          <View style={[styles.progressFill, { width: `${progress}%` }]} />
+        </View>
+      </View>
+
+      <Pressable 
+        onPress={handleExpand}
+        style={[styles.content, { backgroundColor: colorScheme === 'dark' ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.4)' }]}
+      >
+        {/* Thumbnail */}
+        <Image 
+          source={{ uri: currentSermon.thumbnailUrl }}
+          style={styles.thumbnail}
+          resizeMode="cover"
+        />
+
+        {/* Info */}
+        <View style={styles.info}>
+          <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
+            {currentSermon.title}
+          </Text>
+          <View style={styles.subtitle}>
+            <Text style={[styles.artist, { color: colors.textSecondary }]} numberOfLines={1}>
+              {currentSermon.speaker.name}
+            </Text>
+            <Text style={[styles.time, { color: colors.textSecondary }]}>
+              {formatTime(currentPosition)}
+            </Text>
+          </View>
+        </View>
+
+        {/* Controls */}
+        <View style={styles.controls}>
+          <TouchableOpacity
+            onPress={handlePlayPause}
+            style={styles.playButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            {isPlaying ? (
+              <Pause size={24} color={colors.text} fill={colors.text} />
+            ) : (
+              <Play size={24} color={colors.text} fill={colors.text} />
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={handleClose}
+            style={styles.closeButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <X size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    height: 64,
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  progressBarContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 2,
+  },
+  progressBar: {
+    height: '100%',
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#FF6596',
+  },
+  content: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: Spacing.two,
+    paddingRight: Spacing.two,
+    borderRadius: 12,
+  },
+  thumbnail: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: '#E0E0E0',
+  },
+  info: {
+    flex: 1,
+    marginLeft: Spacing.two,
+    marginRight: Spacing.two,
+  },
+  title: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  subtitle: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  artist: {
+    fontSize: 12,
+    flex: 1,
+    marginRight: 8,
+  },
+  time: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  controls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  playButton: {
+    padding: 4,
+  },
+  closeButton: {
+    padding: 4,
+  },
+});
