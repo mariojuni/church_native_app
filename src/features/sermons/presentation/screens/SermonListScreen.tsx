@@ -11,6 +11,7 @@ import { Colors, Spacing, BottomTabInset } from '@/constants/theme';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import type { SermonFilter, SermonSort } from '../../domain/sermon.types';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Debounce hook
 function useDebounce<T>(value: T, delay: number): T {
@@ -32,6 +33,7 @@ function useDebounce<T>(value: T, delay: number): T {
 export function SermonListScreen() {
   const router = useRouter();
   const colors = useTheme();
+  const insets = useSafeAreaInsets();
   
   const { 
     sermons, 
@@ -141,7 +143,7 @@ export function SermonListScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Search Bar */}
-      <View style={styles.searchContainer}>
+      <View style={[styles.searchContainer, { paddingTop: Math.max(insets.top, 24) }]}>
         <SearchBar
           value={localSearchQuery}
           onChangeText={handleSearchChange}
@@ -160,6 +162,7 @@ export function SermonListScreen() {
         <SortDropdown
           activeSort={filters.sort}
           onSortChange={handleSortChange}
+          iconOnly={true}
         />
       </View>
 
@@ -209,7 +212,7 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.three,
+    paddingBottom: Spacing.two,
   },
   filtersContainer: {
     flexDirection: 'row',

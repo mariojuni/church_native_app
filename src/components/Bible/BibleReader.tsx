@@ -165,7 +165,7 @@ const styles = StyleSheet.create({  container: { flex: 1, backgroundColor: '#faf
     color: '#1a1a1a',
   },
   verseWrap: {
-    borderRadius: 4,
+    // borderRadius on nested Text components causes vertical stretching bugs on iOS
   },
   verseSelected: {
     backgroundColor: 'rgba(255,101,150,0.15)',

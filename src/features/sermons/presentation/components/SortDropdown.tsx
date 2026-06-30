@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TouchableOpacity, Modal, Pressable } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, Pressable, useColorScheme } from 'react-native';
 import { useState } from 'react';
 import { ArrowUpDown, Check } from 'lucide-react-native';
 import { useTheme } from '@/hooks/use-theme';
@@ -8,6 +8,7 @@ import type { SermonSort } from '../../domain/sermon.types';
 interface SortDropdownProps {
   activeSort: SermonSort;
   onSortChange: (sort: SermonSort) => void;
+  iconOnly?: boolean;
 }
 
 const SORT_OPTIONS: Array<{ value: SermonSort; label: string }> = [
@@ -17,8 +18,9 @@ const SORT_OPTIONS: Array<{ value: SermonSort; label: string }> = [
   { value: 'alphabetical', label: 'A-Z' },
 ];
 
-export function SortDropdown({ activeSort, onSortChange }: SortDropdownProps) {
+export function SortDropdown({ activeSort, onSortChange, iconOnly = false }: SortDropdownProps) {
   const colors = useTheme();
+  const colorScheme = useColorScheme();
   const [isOpen, setIsOpen] = useState(false);
 
   const activeLabel = SORT_OPTIONS.find((opt) => opt.value === activeSort)?.label || 'Newest First';
@@ -36,9 +38,11 @@ export function SortDropdown({ activeSort, onSortChange }: SortDropdownProps) {
         activeOpacity={0.7}
       >
         <ArrowUpDown size={16} color={colors.text} />
-        <Text style={[styles.triggerText, { color: colors.text }]}>
-          {activeLabel}
-        </Text>
+        {!iconOnly && (
+          <Text style={[styles.triggerText, { color: colors.text }]}>
+            {activeLabel}
+          </Text>
+        )}
       </TouchableOpacity>
 
       <Modal

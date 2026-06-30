@@ -73,56 +73,58 @@ export default function AttendanceScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={[styles.content, { paddingTop: Math.max(insets.top, 24) + 146 }]}>
-        {activeTab === 'reports' && (
-          <View>
-            <View style={styles.statsRow}>
-              <View style={styles.statCard}>
-                <View style={[styles.statIcon, { backgroundColor: '#FFE8F0' }]}>
-                  <Users size={20} color="#FF6596" />
-                </View>
-                <View>
-                  <Text style={styles.statLabel}>Members</Text>
-                  <Text style={styles.statValue}>{checkedInMembers.length}</Text>
-                </View>
-              </View>
-
-              <View style={styles.statCard}>
-                <View style={[styles.statIcon, { backgroundColor: '#E8F0FF' }]}>
-                  <Award size={20} color="#4D8BFF" />
-                </View>
-                <View>
-                  <Text style={styles.statLabel}>First-time Visitors</Text>
-                  <Text style={styles.statValue}>{firstTimeVisitors.length}</Text>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.chartCard}>
-              <Text style={styles.chartTitle}>Check-in Ratio</Text>
-              <View style={styles.ratioCircle}>
-                <Text style={styles.ratioValue}>{checkedInRatio}%</Text>
-                <Text style={styles.ratioLabel}>checked in</Text>
-              </View>
-              <View style={styles.ratioFooter}>
-                <Text style={styles.ratioFooterText}>Present: {checkedInMembers.length}</Text>
-                <Text style={styles.ratioFooterText}>Total: {totalRegisteredMembers}</Text>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {activeTab === 'attendance' && (
-          <AttendanceTab 
-            members={members} 
-            showStaffFeatures={isStaff} 
-          />
-        )}
-
-        {activeTab === 'events' && (
+      {activeTab === 'events' ? (
+        <View style={[styles.content, { flex: 1, paddingTop: Math.max(insets.top, 24) + 146 }]}>
           <ScheduleTab />
-        )}
-      </ScrollView>
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={[styles.content, { paddingTop: Math.max(insets.top, 24) + 146 }]}>
+          {activeTab === 'reports' && (
+            <View>
+              <View style={styles.statsRow}>
+                <View style={styles.statCard}>
+                  <View style={[styles.statIcon, { backgroundColor: '#FFE8F0' }]}>
+                    <Users size={20} color="#FF6596" />
+                  </View>
+                  <View>
+                    <Text style={styles.statLabel}>Members</Text>
+                    <Text style={styles.statValue}>{checkedInMembers.length}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.statCard}>
+                  <View style={[styles.statIcon, { backgroundColor: '#E8F0FF' }]}>
+                    <Award size={20} color="#4D8BFF" />
+                  </View>
+                  <View>
+                    <Text style={styles.statLabel}>First-time Visitors</Text>
+                    <Text style={styles.statValue}>{firstTimeVisitors.length}</Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.chartCard}>
+                <Text style={styles.chartTitle}>Check-in Ratio</Text>
+                <View style={styles.ratioCircle}>
+                  <Text style={styles.ratioValue}>{checkedInRatio}%</Text>
+                  <Text style={styles.ratioLabel}>checked in</Text>
+                </View>
+                <View style={styles.ratioFooter}>
+                  <Text style={styles.ratioFooterText}>Present: {checkedInMembers.length}</Text>
+                  <Text style={styles.ratioFooterText}>Total: {totalRegisteredMembers}</Text>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {activeTab === 'attendance' && (
+            <AttendanceTab 
+              members={members} 
+              showStaffFeatures={isStaff} 
+            />
+          )}
+        </ScrollView>
+      )}
     </View>
   );
 }

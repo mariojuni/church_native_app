@@ -1,136 +1,113 @@
 import { useRef, useEffect, createContext, useContext, ReactNode } from 'react';
-import { Audio, AVPlaybackStatus } from 'expo-av';
+import { useAudioPlayer, setAudioModeAsync, AudioPlayer } from 'expo-audio';
 import { useSermonStore } from '@/store/useSermonStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useEventListener } from 'expo';
 
 interface AudioContextType {
-  sound: Audio.Sound | null;
+  player: AudioPlayer | null;
   playAudio: (audioUrl: string, sermonId: string) => Promise<void>;
-  pauseAudio: () => Promise<void>;
-  resumeAudio: () => Promise<void>;
-  stopAudio: () => Promise<void>;
-  seekAudio: (position: number) => Promise<void>;
-  setRate: (rate: number) => Promise<void>;
+  pauseAudio: () => void;
+  resumeAudio: () => void;
+  stopAudio: () => void;
+  seekAudio: (position: number) => void;
+  setRate: (rate: number) => void;
 }
 
 const AudioContext = createContext<AudioContextType | null>(null);
 
 export function AudioProvider({ children }: { children: ReactNode }) {
-  const soundRef = useRef<Audio.Sound | null>(null);
-  const progressInterval = useRef<NodeJS.Timeout | null>(null);
-  
   const { setCurrentPosition, setIsPlaying, saveProgress } = useSermonStore();
   const currentUser = useAuthStore((state) => state.currentUser);
+  const currentSermonId = useRef<string | null>(null);
+  
+  // Initialize player with no source
+  const player = useAudioPlayer(null);
+  const progressInterval = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     // Configure audio session
-    Audio.setAudioModeAsync({
-      allowsRecordingIOS: false,
-      playsInSilentModeIOS: true,
-      staysActiveInBackground: true,
-      shouldDuckAndroid: true,
-    });
+    setAudioModeAsync({
+      allowsRecording: false,
+      playsInSilentMode: true,
+      shouldPlayInBackground: true,
+      interruptionMode: 'duckOthers',
+    }).catch(console.error);
 
     return () => {
       // Cleanup
-      if (soundRef.current) {
-        soundRef.current.unloadAsync();
-      }
       if (progressInterval.current) {
         clearInterval(progressInterval.current);
       }
     };
   }, []);
 
-  const onPlaybackStatusUpdate = (status: AVPlaybackStatus) => {
-    if (!status.isLoaded) {
-      return;
-    }
-
-    setIsPlaying(status.isPlaying);
-    const currentPos = Math.floor((status.positionMillis || 0) / 1000);
+  useEventListener(player, 'playbackStatusUpdate', (status) => {
+    setIsPlaying(status.playing);
+    
+    const currentPos = Math.floor(status.currentTime);
     setCurrentPosition(currentPos);
-  };
+    
+    if (currentUser && currentSermonId.current && status.playing) {
+      if (!progressInterval.current) {
+        progressInterval.current = setInterval(() => {
+          saveProgress(currentUser.uid, currentSermonId.current!, Math.floor(player.currentTime));
+        }, 5000);
+      }
+    } else if (!status.playing && progressInterval.current) {
+      clearInterval(progressInterval.current);
+      progressInterval.current = null;
+    }
+  });
 
   const playAudio = async (audioUrl: string, sermonId: string) => {
     try {
-      // If there's already a sound playing, stop it
-      if (soundRef.current) {
-        await soundRef.current.unloadAsync();
-      }
-
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: audioUrl },
-        { shouldPlay: true },
-        onPlaybackStatusUpdate
-      );
-
-      soundRef.current = sound;
+      currentSermonId.current = sermonId;
+      player.replace(audioUrl);
+      player.play();
       setIsPlaying(true);
-
-      // Start progress saving
+      
       if (progressInterval.current) {
         clearInterval(progressInterval.current);
       }
-
-      progressInterval.current = setInterval(async () => {
-        if (currentUser && soundRef.current) {
-          const status = await soundRef.current.getStatusAsync();
-          if (status.isLoaded && status.isPlaying) {
-            const currentPos = Math.floor((status.positionMillis || 0) / 1000);
-            saveProgress(currentUser.uid, sermonId, currentPos);
-          }
-        }
-      }, 5000);
-
     } catch (error) {
       console.error('Error playing audio:', error);
     }
   };
 
-  const pauseAudio = async () => {
-    if (soundRef.current) {
-      await soundRef.current.pauseAsync();
-      setIsPlaying(false);
+  const pauseAudio = () => {
+    player.pause();
+    setIsPlaying(false);
+  };
+
+  const resumeAudio = () => {
+    player.play();
+    setIsPlaying(true);
+  };
+
+  const stopAudio = () => {
+    player.replace(null);
+    setIsPlaying(false);
+    setCurrentPosition(0);
+    
+    if (progressInterval.current) {
+      clearInterval(progressInterval.current);
+      progressInterval.current = null;
     }
   };
 
-  const resumeAudio = async () => {
-    if (soundRef.current) {
-      await soundRef.current.playAsync();
-      setIsPlaying(true);
-    }
+  const seekAudio = (position: number) => {
+    // `expo-audio` expects seconds, `position` argument might be milliseconds if passed from UI depending on older implementation
+    // Assuming UI passes position in ms because `VideoPlayerScreen` uses position in ms
+    player.seekTo(position / 1000);
   };
 
-  const stopAudio = async () => {
-    if (soundRef.current) {
-      await soundRef.current.stopAsync();
-      await soundRef.current.unloadAsync();
-      soundRef.current = null;
-      setIsPlaying(false);
-      setCurrentPosition(0);
-      
-      if (progressInterval.current) {
-        clearInterval(progressInterval.current);
-        progressInterval.current = null;
-      }
-    }
-  };
-
-  const seekAudio = async (position: number) => {
-    if (soundRef.current) {
-      await soundRef.current.setPositionAsync(position);
-    }
-  };
-
-  const setRate = async (rate: number) => {
-    if (soundRef.current) {
-      await soundRef.current.setRateAsync(rate, true);
-    }
+  const setRate = (rate: number) => {
+    player.playbackRate = rate;
   };
 
   const value: AudioContextType = {
-    sound: soundRef.current,
+    player,
     playAudio,
     pauseAudio,
     resumeAudio,

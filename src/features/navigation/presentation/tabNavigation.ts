@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react-native';
-import { Activity, Book, HeartHandshake, Home, Video } from 'lucide-react-native';
+import { Activity, Book, HeartHandshake, Home, Play } from 'lucide-react-native';
 
 export type AppTabRouteName = 'index' | 'bible' | 'sermons' | 'prayer' | 'attendance';
 
@@ -14,7 +14,7 @@ export type TabScreenConfig = {
 const TAB_ICON_BY_ROUTE: Record<AppTabRouteName, LucideIcon> = {
   index: Home,
   bible: Book,
-  sermons: Video,
+  sermons: Play,
   prayer: HeartHandshake,
   attendance: Activity,
 };

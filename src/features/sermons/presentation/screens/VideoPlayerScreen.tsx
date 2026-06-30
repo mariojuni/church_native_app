@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Dimensions, Modal } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
+import { useVideoPlayer, VideoView } from 'expo-video';
+import { useEventListener } from 'expo';
 import { 
   Play, 
   Pause, 
@@ -24,22 +25,56 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 export function VideoPlayerScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { colorScheme } = useTheme();
-  const colors = Colors[colorScheme];
+  const colors = useTheme();
   
-  const videoRef = useRef<Video>(null);
   const progressInterval = useRef<NodeJS.Timeout | null>(null);
+  const videoViewRef = useRef<VideoView>(null);
   
   const { currentSermon, fetchSermonById, saveProgress, setCurrentPosition, setIsPlaying, addNote } = useSermonStore();
   const currentUser = useAuthStore((state) => state.currentUser);
   
   const [isPlaying, setLocalIsPlaying] = useState(false);
-  const [duration, setDuration] = useState(0);
   const [position, setPosition] = useState(0);
   const [isBuffering, setIsBuffering] = useState(true);
   const [showControls, setShowControls] = useState(true);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [showNoteEditor, setShowNoteEditor] = useState(false);
+
+  const player = useVideoPlayer(currentSermon?.videoUrl || null, player => {
+    player.loop = false;
+  });
+
+  const duration = player?.duration ? player.duration * 1000 : 0;
+
+  useEventListener(player, 'playingChange', ({ isPlaying }) => {
+    setLocalIsPlaying(isPlaying);
+    setIsPlaying(isPlaying);
+    
+    if (isPlaying) {
+      setIsBuffering(false);
+    }
+  });
+
+  useEventListener(player, 'statusChange', ({ status }) => {
+    if (status === 'loading' || status === 'error') {
+      setIsBuffering(status === 'loading');
+    } else if (status === 'readyToPlay') {
+      setIsBuffering(false);
+    }
+  });
+
+  useEventListener(player, 'timeUpdate', (payload) => {
+    const currentPos = payload.currentTime;
+    setPosition(currentPos * 1000);
+    setCurrentPosition(Math.floor(currentPos));
+
+    if (currentUser && currentSermon && player.playing) {
+      if (!progressInterval.current) {
+        progressInterval.current = setInterval(() => {
+          saveProgress(currentUser.uid, currentSermon.id, Math.floor(player.currentTime));
+        }, 5000);
+      }
+    }
+  });
 
   useEffect(() => {
     if (id) {
@@ -64,51 +99,27 @@ export function VideoPlayerScreen() {
     }
   }, [showControls, isPlaying]);
 
-  const onPlaybackStatusUpdate = (status: AVPlaybackStatus) => {
-    if (!status.isLoaded) {
-      setIsBuffering(true);
-      return;
-    }
-
-    setIsBuffering(false);
-    setLocalIsPlaying(status.isPlaying);
-    setDuration(status.durationMillis || 0);
-    setPosition(status.positionMillis || 0);
-    
-    setCurrentPosition(Math.floor((status.positionMillis || 0) / 1000));
-    setIsPlaying(status.isPlaying);
-
-    // Save progress every 5 seconds
-    if (currentUser && currentSermon && status.isPlaying) {
-      if (!progressInterval.current) {
-        progressInterval.current = setInterval(() => {
-          const currentPos = Math.floor((status.positionMillis || 0) / 1000);
-          saveProgress(currentUser.uid, currentSermon.id, currentPos);
-        }, 5000);
-      }
-    }
-  };
-
-  const handlePlayPause = async () => {
-    if (!videoRef.current) return;
+  const handlePlayPause = () => {
+    if (!player) return;
 
     if (isPlaying) {
-      await videoRef.current.pauseAsync();
+      player.pause();
     } else {
-      await videoRef.current.playAsync();
+      player.play();
     }
   };
 
-  const handleSeek = async (seconds: number) => {
-    if (!videoRef.current) return;
+  const handleSeek = (seconds: number) => {
+    if (!player) return;
     
-    const newPosition = Math.max(0, Math.min(duration, position + seconds * 1000));
-    await videoRef.current.setPositionAsync(newPosition);
+    const newPosition = Math.max(0, Math.min(player.duration, player.currentTime + seconds));
+    player.currentTime = newPosition;
   };
 
-  const handleFullscreen = async () => {
-    // Fullscreen handling - can be enhanced with expo-screen-orientation
-    setIsFullscreen(!isFullscreen);
+  const handleFullscreen = () => {
+    if (videoViewRef.current) {
+      videoViewRef.current.enterFullscreen();
+    }
   };
 
   const handleClose = () => {
@@ -144,14 +155,12 @@ export function VideoPlayerScreen() {
         activeOpacity={1}
         onPress={() => setShowControls(!showControls)}
       >
-        <Video
-          ref={videoRef}
-          source={{ uri: currentSermon.videoUrl }}
+        <VideoView
+          ref={videoViewRef}
+          player={player}
           style={styles.video}
-          resizeMode={ResizeMode.CONTAIN}
-          shouldPlay={false}
-          onPlaybackStatusUpdate={onPlaybackStatusUpdate}
-          useNativeControls={false}
+          contentFit="contain"
+          nativeControls={false}
         />
 
         {/* Buffering Indicator */}
@@ -250,7 +259,7 @@ export function VideoPlayerScreen() {
           <NoteEditor
             sermonId={currentSermon.id}
             userId={currentUser.uid}
-            timestamp={Math.floor(position)}
+            timestamp={Math.floor(position / 1000)}
             onSave={async (note) => {
               await addNote(note);
               setShowNoteEditor(false);
@@ -281,13 +290,13 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   bufferingContainer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   controlsOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0, 0, 0, 0.4)',
     justifyContent: 'space-between',
     padding: Spacing.three,
@@ -389,3 +398,4 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
 });
+

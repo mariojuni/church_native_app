@@ -247,7 +247,9 @@ class SermonRepository {
       createdAt: doc.data().createdAt?.toDate(),
       updatedAt: doc.data().updatedAt?.toDate(),
     } as SermonNote));
-  }Download sermons
+  }
+
+  // Download sermons
   async downloadSermon(
     userId: string,
     sermon: Sermon,
