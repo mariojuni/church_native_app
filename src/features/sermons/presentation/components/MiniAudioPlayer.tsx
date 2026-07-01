@@ -11,6 +11,7 @@ import Animated, {
 import { useRouter } from 'expo-router';
 import { useSermonStore } from '@/store/useSermonStore';
 import { useTheme } from '@/hooks/use-theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing } from '@/constants/theme';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,6 +25,7 @@ interface MiniAudioPlayerProps {
 export function MiniAudioPlayer({ onPlayPause, onClose }: MiniAudioPlayerProps) {
   const router = useRouter();
   const colors = useTheme();
+  const colorScheme = useColorScheme();
   const insets = useSafeAreaInsets();
   
   const { currentSermon, isPlaying, currentPosition } = useSermonStore();
@@ -66,72 +68,74 @@ export function MiniAudioPlayer({ onPlayPause, onClose }: MiniAudioPlayerProps) 
       style={[
         styles.container, 
         { 
-          bottom: Math.max(insets.bottom, 16) + 60, // Above tab bar
+          bottom: Math.max(insets.bottom, 16) + 80, // Generous padding above tab bar
         }
       ]}
     >
-      <BlurView 
-        intensity={80} 
-        tint={colorScheme === 'dark' ? 'dark' : 'light'}
-        style={[StyleSheet.absoluteFill, { borderRadius: 12 }]} 
-      />
-      
-      {/* Progress Bar */}
-      <View style={styles.progressBarContainer}>
-        <View style={[styles.progressBar, { backgroundColor: colors.backgroundElement }]}>
-          <View style={[styles.progressFill, { width: `${progress}%` }]} />
-        </View>
-      </View>
-
-      <Pressable 
-        onPress={handleExpand}
-        style={[styles.content, { backgroundColor: colorScheme === 'dark' ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.4)' }]}
-      >
-        {/* Thumbnail */}
-        <Image 
-          source={{ uri: currentSermon.thumbnailUrl }}
-          style={styles.thumbnail}
-          resizeMode="cover"
+      <View style={styles.innerContainer}>
+        <BlurView 
+          intensity={80} 
+          tint={colorScheme === 'dark' ? 'dark' : 'light'}
+          style={[StyleSheet.absoluteFill, { borderRadius: 12 }]} 
         />
-
-        {/* Info */}
-        <View style={styles.info}>
-          <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
-            {currentSermon.title}
-          </Text>
-          <View style={styles.subtitle}>
-            <Text style={[styles.artist, { color: colors.textSecondary }]} numberOfLines={1}>
-              {currentSermon.speaker.name}
-            </Text>
-            <Text style={[styles.time, { color: colors.textSecondary }]}>
-              {formatTime(currentPosition)}
-            </Text>
+        
+        {/* Progress Bar */}
+        <View style={styles.progressBarContainer}>
+          <View style={[styles.progressBar, { backgroundColor: colors.backgroundElement }]}>
+            <View style={[styles.progressFill, { width: `${progress}%` }]} />
           </View>
         </View>
 
-        {/* Controls */}
-        <View style={styles.controls}>
-          <TouchableOpacity
-            onPress={handlePlayPause}
-            style={styles.playButton}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            {isPlaying ? (
-              <Pause size={24} color={colors.text} fill={colors.text} />
-            ) : (
-              <Play size={24} color={colors.text} fill={colors.text} />
-            )}
-          </TouchableOpacity>
+        <Pressable 
+          onPress={handleExpand}
+          style={[styles.content, { backgroundColor: colorScheme === 'dark' ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.4)' }]}
+        >
+          {/* Thumbnail */}
+          <Image 
+            source={{ uri: currentSermon.thumbnailUrl }}
+            style={styles.thumbnail}
+            resizeMode="cover"
+          />
 
-          <TouchableOpacity
-            onPress={handleClose}
-            style={styles.closeButton}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <X size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
-        </View>
-      </Pressable>
+          {/* Info */}
+          <View style={styles.info}>
+            <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
+              {currentSermon.title}
+            </Text>
+            <View style={styles.subtitle}>
+              <Text style={[styles.artist, { color: colors.textSecondary }]} numberOfLines={1}>
+                {currentSermon.speaker.name}
+              </Text>
+              <Text style={[styles.time, { color: colors.textSecondary }]}>
+                {formatTime(currentPosition)}
+              </Text>
+            </View>
+          </View>
+
+          {/* Controls */}
+          <View style={styles.controls}>
+            <TouchableOpacity
+              onPress={handlePlayPause}
+              style={styles.playButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              {isPlaying ? (
+                <Pause size={24} color={colors.text} fill={colors.text} />
+              ) : (
+                <Play size={24} color={colors.text} fill={colors.text} />
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={handleClose}
+              style={styles.closeButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <X size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </View>
     </Animated.View>
   );
 }
@@ -143,12 +147,16 @@ const styles = StyleSheet.create({
     right: 16,
     height: 64,
     borderRadius: 12,
-    overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  innerContainer: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
   },
   progressBarContainer: {
     position: 'absolute',

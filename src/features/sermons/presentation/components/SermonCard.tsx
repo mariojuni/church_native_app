@@ -1,8 +1,10 @@
-import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import Animated, { useAnimatedStyle, withTiming, useSharedValue } from 'react-native-reanimated';
 import { Heart, Clock, User } from 'lucide-react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { Colors, Spacing } from '@/constants/theme';
 import type { Sermon } from '../../domain/sermon.types';
+import * as Haptics from 'expo-haptics';
 
 interface SermonCardProps {
   sermon: Sermon;
@@ -12,8 +14,7 @@ interface SermonCardProps {
 }
 
 export function SermonCard({ sermon, onPress, onFavorite, isFavorited }: SermonCardProps) {
-  const { colorScheme } = useTheme();
-  const colors = Colors[colorScheme];
+  const colors = useTheme();
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -34,158 +35,209 @@ export function SermonCard({ sermon, onPress, onFavorite, isFavorited }: SermonC
     });
   };
 
+  const handlePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onPress();
+  };
+
+  const handleFavorite = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    onFavorite();
+  };
+
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: scale.value }]
+    };
+  });
+
+  const handlePressIn = () => {
+    scale.value = withTiming(0.97, { duration: 150 });
+  };
+
+  const handlePressOut = () => {
+    scale.value = withTiming(1, { duration: 150 });
+  };
+
   return (
-    <TouchableOpacity
-      style={[styles.card, { backgroundColor: colors.backgroundElement }]}
-      onPress={onPress}
-      activeOpacity={0.7}
+    <Pressable 
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      onPress={handlePress}
     >
-      {/* Thumbnail */}
-      <Image 
-        source={{ uri: sermon.thumbnailUrl }} 
-        style={styles.thumbnail}
-        resizeMode="cover"
-      />
-      
-      {/* Badge for type */}
-      <View style={[styles.badge, sermon.type === 'video' ? styles.videoBadge : styles.audioBadge]}>
-        <Text style={styles.badgeText}>{sermon.type.toUpperCase()}</Text>
-      </View>
-
-      {/* Favorite button */}
-      <TouchableOpacity
-        style={styles.favoriteButton}
-        onPress={onFavorite}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      <Animated.View
+        style={[
+          styles.card,
+          animatedStyle,
+          { backgroundColor: colors.backgroundElement }
+        ]}
       >
-        <Heart
-          size={22}
-          color={isFavorited ? '#FF6596' : '#FFF'}
-          fill={isFavorited ? '#FF6596' : 'transparent'}
-          strokeWidth={2}
-        />
-      </TouchableOpacity>
+          {/* Thumbnail */}
+          <View style={styles.imageContainer}>
+            <Image 
+              source={{ uri: sermon.thumbnailUrl }} 
+              style={styles.thumbnail}
+              resizeMode="cover"
+            />
+            {/* Badge for type */}
+            <View style={[styles.badge, sermon.type === 'video' ? styles.videoBadge : styles.audioBadge]}>
+              <Text style={styles.badgeText}>{sermon.type.toUpperCase()}</Text>
+            </View>
 
-      {/* Content */}
-      <View style={styles.content}>
-        <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
-          {sermon.title}
-        </Text>
-        
-        <View style={styles.meta}>
-          <View style={styles.metaItem}>
-            <User size={14} color={colors.textSecondary} />
-            <Text style={[styles.metaText, { color: colors.textSecondary }]} numberOfLines={1}>
-              {sermon.speaker.name}
-            </Text>
+            {/* Favorite button */}
+            <TouchableOpacity
+              style={styles.favoriteButton}
+              onPress={handleFavorite}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Heart
+                size={22}
+                color={isFavorited ? '#FF6596' : '#FFF'}
+                fill={isFavorited ? '#FF6596' : 'transparent'}
+                strokeWidth={2.5}
+              />
+            </TouchableOpacity>
           </View>
           
-          <View style={styles.metaItem}>
-            <Clock size={14} color={colors.textSecondary} />
-            <Text style={[styles.metaText, { color: colors.textSecondary }]}>
-              {formatDuration(sermon.duration)}
+          {/* Content */}
+          <View style={styles.content}>
+            <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
+              {sermon.title}
             </Text>
-          </View>
-        </View>
+            
+            <View style={styles.meta}>
+              <View style={styles.metaItem}>
+                <User size={14} color={colors.textSecondary} />
+                <Text style={[styles.metaText, { color: colors.textSecondary }]} numberOfLines={1}>
+                  {sermon.speaker.name}
+                </Text>
+              </View>
+              
+              <View style={styles.metaItem}>
+                <Clock size={14} color={colors.textSecondary} />
+                <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+                  {formatDuration(sermon.duration)}
+                </Text>
+              </View>
+            </View>
 
-        <Text style={[styles.date, { color: colors.textSecondary }]}>
-          {formatDate(sermon.date)}
-        </Text>
-
-        {sermon.series && (
-          <View style={styles.seriesTag}>
-            <Text style={styles.seriesText} numberOfLines={1}>{sermon.series.title}</Text>
+            <View style={styles.footer}>
+              <Text style={[styles.date, { color: colors.textSecondary }]}>
+                {formatDate(sermon.date)}
+              </Text>
+              
+              {sermon.series && (
+                <View style={styles.seriesTag}>
+                  <Text style={styles.seriesText} numberOfLines={1}>{sermon.series.title}</Text>
+                </View>
+              )}
+            </View>
           </View>
-        )}
-      </View>
-    </TouchableOpacity>
+        </Animated.View>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 16,
-    marginBottom: Spacing.three,
+    borderRadius: 20,
+    marginBottom: Spacing.four,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  imageContainer: {
+    width: '100%',
+    height: 220,
+    position: 'relative',
   },
   thumbnail: {
     width: '100%',
-    height: 200,
+    height: '100%',
     backgroundColor: '#E0E0E0',
   },
   badge: {
     position: 'absolute',
-    top: 12,
-    left: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
+    top: 16,
+    left: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
   videoBadge: {
-    backgroundColor: 'rgba(255, 59, 48, 0.9)',
+    backgroundColor: 'rgba(255, 59, 48, 0.95)',
   },
   audioBadge: {
-    backgroundColor: 'rgba(52, 199, 89, 0.9)',
+    backgroundColor: 'rgba(52, 199, 89, 0.95)',
   },
   badgeText: {
     color: '#FFF',
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.5,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
   },
   favoriteButton: {
     position: 'absolute',
-    top: 12,
-    right: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    top: 16,
+    right: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
     borderRadius: 20,
-    padding: 8,
+    padding: 10,
   },
   content: {
-    padding: Spacing.three,
+    padding: Spacing.four,
   },
   title: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: Spacing.two,
-    lineHeight: 24,
+    fontSize: 20,
+    fontWeight: '800',
+    marginBottom: Spacing.three,
+    lineHeight: 28,
   },
   meta: {
     flexDirection: 'row',
-    gap: Spacing.three,
-    marginBottom: Spacing.one,
+    gap: Spacing.four,
+    marginBottom: Spacing.three,
   },
   metaItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     flex: 1,
   },
   metaText: {
-    fontSize: 13,
+    fontSize: 14,
+    fontWeight: '500',
     flex: 1,
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: Spacing.one,
   },
   date: {
     fontSize: 13,
-    marginTop: Spacing.one,
+    fontWeight: '500',
   },
   seriesTag: {
-    marginTop: Spacing.two,
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(100, 100, 255, 0.15)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-    maxWidth: '100%',
+    backgroundColor: 'rgba(100, 100, 255, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    maxWidth: '60%',
   },
   seriesText: {
     color: '#6464FF',
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

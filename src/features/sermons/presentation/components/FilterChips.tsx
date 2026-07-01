@@ -1,8 +1,10 @@
-import { ScrollView, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { ScrollView, View, Text, StyleSheet, Pressable } from 'react-native';
 import { Video, Mic, Layers, Grid3x3 } from 'lucide-react-native';
+import Animated, { useAnimatedStyle, withTiming, useSharedValue } from 'react-native-reanimated';
 import { useTheme } from '@/hooks/use-theme';
 import { Colors, Spacing } from '@/constants/theme';
 import type { SermonFilter } from '../../domain/sermon.types';
+import * as Haptics from 'expo-haptics';
 
 interface FilterChipsProps {
   activeFilter: SermonFilter;
@@ -16,6 +18,79 @@ const FILTERS: Array<{ value: SermonFilter; label: string; icon: typeof Video }>
   { value: 'series', label: 'Series', icon: Layers },
 ];
 
+function FilterChip({ 
+  filter, 
+  isActive, 
+  onPress, 
+  colors 
+}: { 
+  filter: typeof FILTERS[0]; 
+  isActive: boolean; 
+  onPress: () => void;
+  colors: any;
+}) {
+  const Icon = filter.icon;
+  
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      backgroundColor: withTiming(isActive ? '#FF6596' : colors.backgroundElement, { duration: 200 }),
+      borderColor: withTiming(isActive ? '#FF6596' : 'rgba(150, 150, 150, 0.2)', { duration: 200 }),
+    };
+  }, [isActive, colors.backgroundElement]);
+
+  const textAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      color: withTiming(isActive ? '#FFF' : colors.text, { duration: 200 }),
+    };
+  }, [isActive, colors.text]);
+
+  const scale = useSharedValue(1);
+
+  const containerAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: scale.value }]
+    };
+  });
+
+  const handlePressIn = () => {
+    scale.value = withTiming(0.95, { duration: 100 });
+  };
+
+  const handlePressOut = () => {
+    scale.value = withTiming(1, { duration: 100 });
+  };
+
+  const handlePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onPress();
+  };
+
+  return (
+    <Pressable 
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      onPress={handlePress}
+    >
+      <Animated.View
+        style={[
+          styles.chip,
+          animatedStyle,
+          containerAnimatedStyle
+        ]}
+      >
+          <Icon
+            size={16}
+            color={isActive ? '#FFF' : colors.text}
+            strokeWidth={2.5}
+          />
+          <Animated.Text style={[styles.chipText, textAnimatedStyle]}>
+            {filter.label}
+          </Animated.Text>
+      </Animated.View>
+    </Pressable>
+  );
+}
+
 export function FilterChips({ activeFilter, onFilterChange }: FilterChipsProps) {
   const colors = useTheme();
 
@@ -25,39 +100,15 @@ export function FilterChips({ activeFilter, onFilterChange }: FilterChipsProps) 
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.container}
     >
-      {FILTERS.map((filter) => {
-        const isActive = activeFilter === filter.value;
-        const Icon = filter.icon;
-
-        return (
-          <TouchableOpacity
-            key={filter.value}
-            onPress={() => onFilterChange(filter.value)}
-            style={[
-              styles.chip,
-              {
-                backgroundColor: isActive ? '#FF6596' : colors.backgroundElement,
-                borderColor: isActive ? '#FF6596' : 'transparent',
-              },
-            ]}
-            activeOpacity={0.7}
-          >
-            <Icon
-              size={16}
-              color={isActive ? '#FFF' : colors.text}
-              strokeWidth={2}
-            />
-            <Text
-              style={[
-                styles.chipText,
-                { color: isActive ? '#FFF' : colors.text },
-              ]}
-            >
-              {filter.label}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
+      {FILTERS.map((filter) => (
+        <FilterChip
+          key={filter.value}
+          filter={filter}
+          isActive={activeFilter === filter.value}
+          onPress={() => onFilterChange(filter.value)}
+          colors={colors}
+        />
+      ))}
     </ScrollView>
   );
 }
@@ -70,11 +121,16 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    borderRadius: 20,
-    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 24,
+    gap: 8,
     borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   chipText: {
     fontSize: 14,

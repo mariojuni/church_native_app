@@ -17,6 +17,8 @@ import { useTheme } from '@/hooks/use-theme';
 import { Spacing } from '@/constants/theme';
 import { NoteEditor } from '../components/NoteEditor';
 import * as Haptics from 'expo-haptics';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const PLAYBACK_SPEEDS = [0.75, 1, 1.25, 1.5, 2];
 
@@ -24,6 +26,7 @@ export function AudioPlayerScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const colors = useTheme();
+  const insets = useSafeAreaInsets();
   
   const { playAudio, pauseAudio, seekAudio, setRate, sound, isPlaying, progress, duration } = useAudio();
   
@@ -131,7 +134,10 @@ export function AudioPlayerScreen() {
   const currentPosition = progress * duration;
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <LinearGradient 
+      colors={[colors.background, 'rgba(255, 101, 150, 0.05)', colors.background]}
+      style={[styles.container, { paddingTop: Math.max(insets.top, 20) }]}
+    >
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
@@ -254,14 +260,13 @@ export function AudioPlayerScreen() {
           />
         </Modal>
       )}
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 60,
   },
   centerContent: {
     justifyContent: 'center',
@@ -287,14 +292,14 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.four,
   },
   artwork: {
-    width: 280,
-    height: 280,
-    borderRadius: 20,
+    width: 320,
+    height: 320,
+    borderRadius: 24,
     backgroundColor: '#E0E0E0',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.25,
+    shadowRadius: 24,
     elevation: 12,
   },
   bufferingOverlay: {

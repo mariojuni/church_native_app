@@ -86,7 +86,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   };
 
   const stopAudio = () => {
-    player.replace(null);
+    player.pause();
     setIsPlaying(false);
     setCurrentPosition(0);
     

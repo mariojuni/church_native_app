@@ -19,6 +19,7 @@ import { NotesSheet } from '../components/NotesSheet';
 import { DownloadButton } from '../components/DownloadButton';
 import * as Haptics from 'expo-haptics';
 import * as ExpoSharing from 'expo-sharing';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export function SermonDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -132,12 +133,18 @@ export function SermonDetailScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Thumbnail */}
-        <Image 
-          source={{ uri: currentSermon.thumbnailUrl }}
-          style={styles.thumbnail}
-          resizeMode="cover"
-        />
+        {/* Thumbnail with Gradient Fade */}
+        <View style={styles.thumbnailContainer}>
+          <Image 
+            source={{ uri: currentSermon.thumbnailUrl }}
+            style={styles.thumbnail}
+            resizeMode="cover"
+          />
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.3)', colors.background]}
+            style={styles.thumbnailGradient}
+          />
+        </View>
 
         {/* Play Button Overlay */}
         <TouchableOpacity 
@@ -389,17 +396,29 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  thumbnailContainer: {
+    width: '100%',
+    height: 340,
+    position: 'relative',
+    backgroundColor: '#E0E0E0',
+  },
   thumbnail: {
     width: '100%',
-    height: 300,
-    backgroundColor: '#E0E0E0',
+    height: '100%',
+  },
+  thumbnailGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 120,
   },
   playOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: 300,
+    height: 340,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -417,8 +436,9 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   content: {
-    padding: Spacing.three,
+    padding: Spacing.four,
     paddingBottom: 100,
+    marginTop: -40,
   },
   badge: {
     alignSelf: 'flex-start',

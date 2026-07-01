@@ -19,6 +19,8 @@ import { useTheme } from '@/hooks/use-theme';
 import { Colors, Spacing } from '@/constants/theme';
 import { NoteEditor } from '../components/NoteEditor';
 import * as Haptics from 'expo-haptics';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -26,6 +28,7 @@ export function VideoPlayerScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const colors = useTheme();
+  const insets = useSafeAreaInsets();
   
   const progressInterval = useRef<NodeJS.Timeout | null>(null);
   const videoViewRef = useRef<VideoView>(null);
@@ -113,6 +116,7 @@ export function VideoPlayerScreen() {
     if (!player) return;
     
     const newPosition = Math.max(0, Math.min(player.duration, player.currentTime + seconds));
+    // eslint-disable-next-line react-hooks/immutability
     player.currentTime = newPosition;
   };
 
@@ -172,7 +176,10 @@ export function VideoPlayerScreen() {
 
         {/* Controls Overlay */}
         {showControls && (
-          <View style={styles.controlsOverlay}>
+          <LinearGradient 
+            colors={['rgba(0,0,0,0.7)', 'rgba(0,0,0,0.2)', 'rgba(0,0,0,0.8)']}
+            style={[styles.controlsOverlay, { paddingTop: Math.max(insets.top, Spacing.three) }]}
+          >
             {/* Top Bar */}
             <View style={styles.topBar}>
               <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
@@ -230,7 +237,7 @@ export function VideoPlayerScreen() {
                 </TouchableOpacity>
               </View>
             </View>
-          </View>
+          </LinearGradient>
         )}
 
         {/* Floating Note Button */}
@@ -296,8 +303,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   controlsOverlay: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     justifyContent: 'space-between',
     padding: Spacing.three,
   },

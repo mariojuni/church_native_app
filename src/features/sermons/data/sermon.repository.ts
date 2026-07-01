@@ -108,11 +108,11 @@ class SermonRepository {
     const lowerQuery = searchQuery.toLowerCase();
     sermons = sermons.filter((sermon) => {
       return (
-        sermon.title.toLowerCase().includes(lowerQuery) ||
+        sermon.title?.toLowerCase().includes(lowerQuery) ||
         sermon.description?.toLowerCase().includes(lowerQuery) ||
-        sermon.speaker.name.toLowerCase().includes(lowerQuery) ||
-        sermon.tags.some(tag => tag.toLowerCase().includes(lowerQuery)) ||
-        sermon.series?.title.toLowerCase().includes(lowerQuery)
+        sermon.speaker?.name?.toLowerCase().includes(lowerQuery) ||
+        sermon.tags?.some(tag => tag.toLowerCase().includes(lowerQuery)) ||
+        sermon.series?.title?.toLowerCase().includes(lowerQuery)
       );
     });
 
@@ -261,12 +261,12 @@ class SermonRepository {
     }
 
     const fileName = `sermon_${sermon.id}_${sermon.type}.${sermon.type === 'video' ? 'mp4' : 'm4a'}`;
-    const fileUri = `${FileSystem.documentDirectory}sermons/${fileName}`;
+    const fileUri = `${(FileSystem as any).documentDirectory}sermons/${fileName}`;
 
     // Create directory if it doesn't exist
-    const dirInfo = await FileSystem.getInfoAsync(`${FileSystem.documentDirectory}sermons/`);
+    const dirInfo = await FileSystem.getInfoAsync(`${(FileSystem as any).documentDirectory}sermons/`);
     if (!dirInfo.exists) {
-      await FileSystem.makeDirectoryAsync(`${FileSystem.documentDirectory}sermons/`, { intermediates: true });
+      await FileSystem.makeDirectoryAsync(`${(FileSystem as any).documentDirectory}sermons/`, { intermediates: true });
     }
 
     // Download with progress tracking
@@ -307,7 +307,7 @@ class SermonRepository {
       id: doc.id,
       ...doc.data(),
       downloadedAt: doc.data().downloadedAt?.toDate(),
-    } as SermonDownload));
+    } as unknown as SermonDownload));
   }
 
   async deleteDownload(userId: string, sermonId: string): Promise<void> {

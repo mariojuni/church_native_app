@@ -10,17 +10,18 @@
  * NOTE: You'll need to update this with your actual Firebase Admin SDK credentials
  */
 
-const admin = require('firebase-admin');
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getFirestore, Timestamp } = require('firebase-admin/firestore');
 
 // Initialize Firebase Admin (you'll need to add your service account key)
 // Download from: Firebase Console > Project Settings > Service Accounts
-// const serviceAccount = require('./serviceAccountKey.json');
+const serviceAccount = require('./serviceAccountKey.json');
 
-// admin.initializeApp({
-//   credential: admin.credential.cert(serviceAccount)
-// });
+initializeApp({
+  credential: cert(serviceAccount)
+});
 
-// const db = admin.firestore();
+const db = getFirestore();
 
 // Sample sermon data
 const sampleSermons = [
@@ -206,35 +207,35 @@ const sampleSermons = [
 // Function to seed sermons
 async function seedSermons() {
   console.log('Starting sermon seeding...');
-  
+
   try {
     const sermonsRef = db.collection('sermons');
-    
+
     for (const sermon of sampleSermons) {
       // Convert Date objects to Firestore Timestamps
       const sermonData = {
         ...sermon,
-        date: admin.firestore.Timestamp.fromDate(sermon.date),
-        createdAt: admin.firestore.Timestamp.fromDate(sermon.createdAt),
-        updatedAt: admin.firestore.Timestamp.fromDate(sermon.updatedAt),
-        publishedAt: admin.firestore.Timestamp.fromDate(sermon.publishedAt),
+        date: Timestamp.fromDate(sermon.date),
+        createdAt: Timestamp.fromDate(sermon.createdAt),
+        updatedAt: Timestamp.fromDate(sermon.updatedAt),
+        publishedAt: Timestamp.fromDate(sermon.publishedAt),
       };
-      
+
       if (sermon.series) {
         sermonData.series = {
           ...sermon.series,
-          startDate: admin.firestore.Timestamp.fromDate(sermon.series.startDate),
-          endDate: admin.firestore.Timestamp.fromDate(sermon.series.endDate),
+          startDate: Timestamp.fromDate(sermon.series.startDate),
+          endDate: Timestamp.fromDate(sermon.series.endDate),
         };
       }
-      
+
       const docRef = await sermonsRef.add(sermonData);
       console.log(`✅ Added sermon: ${sermon.title} (ID: ${docRef.id})`);
     }
-    
+
     console.log('\n🎉 Successfully seeded all sermons!');
     console.log(`Total sermons added: ${sampleSermons.length}`);
-    
+
   } catch (error) {
     console.error('❌ Error seeding sermons:', error);
   }
@@ -313,6 +314,6 @@ NOTE: Replace these with your actual sermon media URLs before production!
 `);
 
 // Uncomment to run seeding:
-// seedSermons().then(() => process.exit(0));
+seedSermons().then(() => process.exit(0));
 
 module.exports = { sampleSermons, seedSermons };

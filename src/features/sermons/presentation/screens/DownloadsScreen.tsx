@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { View, StyleSheet, FlatList, Text, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { useSermonStore } from '@/store/useSermonStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -25,13 +25,7 @@ export function DownloadsScreen() {
   const [loading, setLoading] = useState(true);
   const [sermons, setSermons] = useState<Sermon[]>([]);
 
-  useEffect(() => {
-    if (currentUser) {
-      loadDownloads();
-    }
-  }, [currentUser]);
-
-  const loadDownloads = async () => {
+  const loadDownloads = useCallback(async () => {
     if (!currentUser) return;
     
     setLoading(true);
@@ -51,7 +45,15 @@ export function DownloadsScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUser, downloadsList, fetchSermonById, loadDownloadedSermons]);
+
+  useEffect(() => {
+    if (currentUser) {
+      loadDownloads();
+    }
+  }, [currentUser, loadDownloads]);
+
+
 
   const handleSermonPress = (sermonId: string) => {
     router.push({
@@ -87,7 +89,7 @@ export function DownloadsScreen() {
   };
 
   const getTotalSize = () => {
-    const totalBytes = downloadsList.reduce((sum, download) => sum + (download.size || 0), 0);
+    const totalBytes = downloadsList.reduce((sum, download) => sum + (download.fileSize || 0), 0);
     const totalMB = (totalBytes / (1024 * 1024)).toFixed(1);
     return totalMB;
   };

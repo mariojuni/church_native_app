@@ -1,17 +1,16 @@
-import { useEffect, useState } from 'react';
-import { View, StyleSheet, FlatList, RefreshControl, Text, ActivityIndicator } from 'react-native';
-import { useSermonStore } from '@/store/useSermonStore';
-import { useAuthStore } from '@/store/useAuthStore';
-import { SermonCard } from '../components/SermonCard';
-import { SearchBar } from '../components/SearchBar';
-import { FilterChips } from '../components/FilterChips';
-import { SortDropdown } from '../components/SortDropdown';
+import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { Colors, Spacing, BottomTabInset } from '@/constants/theme';
-import { useRouter } from 'expo-router';
+import { useAuthStore } from '@/store/useAuthStore';
+import { useSermonStore } from '@/store/useSermonStore';
 import * as Haptics from 'expo-haptics';
-import type { SermonFilter, SermonSort } from '../../domain/sermon.types';
+import { useRouter } from 'expo-router';
+import { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CompactSermonCard } from '../components/CompactSermonCard';
+import { HeroSermonCard } from '../components/HeroSermonCard';
+import { HorizontalSermonCard } from '../components/HorizontalSermonCard';
+import { SearchBar } from '../components/SearchBar';
 
 // Debounce hook
 function useDebounce<T>(value: T, delay: number): T {
@@ -34,22 +33,19 @@ export function SermonListScreen() {
   const router = useRouter();
   const colors = useTheme();
   const insets = useSafeAreaInsets();
-  
-  const { 
-    sermons, 
-    loading, 
-    hasMore, 
+
+  const {
+    sermons,
+    loading,
     fetchSermons,
     searchSermons,
     setSearchQuery,
     searchQuery,
-    filters,
-    setFilters,
-    toggleFavorite, 
+    toggleFavorite,
     favorites,
-    loadFavorites 
+    loadFavorites
   } = useSermonStore();
-  
+
   const currentUser = useAuthStore((state) => state.currentUser);
 
   const [localSearchQuery, setLocalSearchQuery] = useState('');
@@ -65,16 +61,9 @@ export function SermonListScreen() {
   // Trigger search when debounced query changes
   useEffect(() => {
     if (debouncedSearchQuery !== searchQuery) {
-      searchSermons(debouncedSearchQuery);
+      // searchSermons(debouncedSearchQuery);
     }
   }, [debouncedSearchQuery]);
-
-  const handleLoadMore = () => {
-    if (!loading && hasMore && !localSearchQuery.trim()) {
-      fetchSermons();
-    }
-  };
-
 
   const handleSearchChange = (text: string) => {
     setLocalSearchQuery(text);
@@ -84,14 +73,6 @@ export function SermonListScreen() {
     setLocalSearchQuery('');
     setSearchQuery('');
     fetchSermons(true);
-  };
-
-  const handleFilterChange = (filter: SermonFilter) => {
-    setFilters({ filter });
-  };
-
-  const handleSortChange = (sort: SermonSort) => {
-    setFilters({ sort });
   };
 
   const handleFavorite = async (sermonId: string) => {
@@ -108,42 +89,21 @@ export function SermonListScreen() {
     });
   };
 
-  const renderEmpty = () => {
-    if (loading && sermons.length === 0) {
-      return (
-        <View style={styles.emptyContainer}>
-          <ActivityIndicator size="large" color="#FF6596" />
-          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-            Loading sermons...
-          </Text>
-        </View>
-      );
-    }
+  const heroSermon = sermons.length > 0 ? sermons[0] : null;
+  const recentSermons = sermons.length > 1 ? sermons.slice(1, 6) : [];
+  const mostPlayedSermons = useMemo(() => {
+    if (sermons.length <= 1) return [];
+    return [...sermons.slice(1)].sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0)).slice(0, 5);
+  }, [sermons]);
 
-    return (
-      <View style={styles.emptyContainer}>
-        <Text style={[styles.emptyTitle, { color: colors.text }]}>No Sermons Yet</Text>
-        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-          Check back later for new sermons
-        </Text>
-      </View>
-    );
-  };
-
-  const renderFooter = () => {
-    if (!loading || sermons.length === 0) return null;
-    
-    return (
-      <View style={styles.footer}>
-        <ActivityIndicator size="small" color="#FF6596" />
-      </View>
-    );
-  };
+  const isSearching = localSearchQuery.trim().length > 0;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={{ paddingTop: Math.max(insets.top, 16) }} />
+
       {/* Search Bar */}
-      <View style={[styles.searchContainer, { paddingTop: Math.max(insets.top, 24) }]}>
+      <View style={styles.searchContainer}>
         <SearchBar
           value={localSearchQuery}
           onChangeText={handleSearchChange}
@@ -151,56 +111,97 @@ export function SermonListScreen() {
         />
       </View>
 
-      {/* Filters and Sort */}
-      <View style={styles.filtersContainer}>
-        <View style={styles.filtersLeft}>
-          <FilterChips
-            activeFilter={filters.filter}
-            onFilterChange={handleFilterChange}
-          />
-        </View>
-        <SortDropdown
-          activeSort={filters.sort}
-          onSortChange={handleSortChange}
-          iconOnly={true}
-        />
-      </View>
-
       <FlatList
-        data={sermons}
+        data={isSearching ? sermons : []}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <SermonCard
+          <CompactSermonCard
             sermon={item}
             onPress={() => handleSermonPress(item.id)}
-            onFavorite={() => handleFavorite(item.id)}
-            isFavorited={favorites.has(item.id)}
           />
         )}
-        contentContainerStyle={[
-          styles.list,
-          sermons.length === 0 && styles.emptyList,
-          { paddingBottom: BottomTabInset + 80 }
-        ]}
-        onEndReached={handleLoadMore}
-        onEndReachedThreshold={0.5}
-        refreshControl={
-          <RefreshControl
-            refreshing={loading && sermons.length === 0}
-            onRefresh={() => {
-              if (localSearchQuery.trim()) {
-                searchSermons(localSearchQuery);
-              } else {
-                fetchSermons(true);
-              }
-            }}
-            tintColor="#FF6596"
-            colors={['#FF6596']}
-          />
-        }
-        ListEmptyComponent={renderEmpty}
-        ListFooterComponent={renderFooter}
+        contentContainerStyle={!isSearching ? { paddingBottom: BottomTabInset + 40 } : [styles.list, { paddingBottom: BottomTabInset + 40 }]}
         showsVerticalScrollIndicator={false}
+        keyboardDismissMode="none"
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          !isSearching ? (
+            <RefreshControl
+              refreshing={loading}
+              onRefresh={() => fetchSermons(true)}
+              tintColor="#FF6596"
+              colors={['#FF6596']}
+            />
+          ) : undefined
+        }
+        ListEmptyComponent={
+          loading && sermons.length === 0 ? (
+            <View style={[styles.centerContainer, { backgroundColor: colors.background, marginTop: 40 }]}>
+              <ActivityIndicator size="large" color="#FF6596" />
+            </View>
+          ) : isSearching ? (
+            <View style={styles.emptyContainer}>
+              <Text style={[styles.emptyTitle, { color: colors.text }]}>No Results</Text>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                We could not find any sermons matching &quot;{localSearchQuery}&quot;.
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.tabContent}>
+              {heroSermon ? (
+                <View style={styles.heroSection}>
+                  <HeroSermonCard
+                    sermon={heroSermon}
+                    onPress={() => handleSermonPress(heroSermon.id)}
+                    isNew={true}
+                  />
+                </View>
+              ) : (
+                <View style={styles.emptyContainer}>
+                  <Text style={[styles.emptyTitle, { color: colors.text }]}>No Sermons Yet</Text>
+                </View>
+              )}
+
+              {recentSermons.length > 0 && (
+                <View style={styles.section}>
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>Recently Uploaded</Text>
+                  <FlatList
+                    data={recentSermons}
+                    keyExtractor={(item) => item.id}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.horizontalListContent}
+                    renderItem={({ item }) => (
+                      <HorizontalSermonCard
+                        sermon={item}
+                        onPress={() => handleSermonPress(item.id)}
+                      />
+                    )}
+                  />
+                </View>
+              )}
+
+              {mostPlayedSermons.length > 0 && (
+                <View style={styles.section}>
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>Most Played</Text>
+                  <FlatList
+                    data={mostPlayedSermons}
+                    keyExtractor={(item) => item.id}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.horizontalListContent}
+                    renderItem={({ item }) => (
+                      <HorizontalSermonCard
+                        sermon={item}
+                        onPress={() => handleSermonPress(item.id)}
+                      />
+                    )}
+                  />
+                </View>
+              )}
+            </View>
+          )
+        }
       />
     </View>
   );
@@ -210,43 +211,49 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  searchContainer: {
-    paddingHorizontal: Spacing.three,
-    paddingBottom: Spacing.two,
-  },
-  filtersContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.three,
-    gap: Spacing.two,
-  },
-  filtersLeft: {
-    flex: 1,
-  },
-  list: {
-    padding: Spacing.three,
-  },
-  emptyList: {
-    flexGrow: 1,
-  },
-  emptyContainer: {
+  centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 60,
+  },
+  searchContainer: {
+    paddingHorizontal: Spacing.four,
+    paddingBottom: Spacing.two,
+  },
+  list: {
+    paddingVertical: Spacing.two,
+  },
+  tabContent: {
+    flex: 1,
+  },
+  heroSection: {
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.two,
+  },
+  section: {
+    marginTop: Spacing.four,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    paddingHorizontal: Spacing.four,
+    marginBottom: Spacing.three,
+  },
+  horizontalListContent: {
+    paddingHorizontal: Spacing.four,
+  },
+  emptyContainer: {
+    padding: Spacing.six,
+    alignItems: 'center',
+    marginTop: 60,
   },
   emptyTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 22,
+    fontWeight: '800',
     marginBottom: Spacing.two,
   },
   emptyText: {
     fontSize: 15,
     textAlign: 'center',
-    paddingHorizontal: Spacing.four,
-  },
-  footer: {
-    paddingVertical: Spacing.three,
-    alignItems: 'center',
   },
 });

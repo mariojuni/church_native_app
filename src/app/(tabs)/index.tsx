@@ -1,11 +1,12 @@
+import { VerseOfTheDayCard } from '@/features/home/presentation/components/VerseOfTheDayCard';
+import { useHomeScreenData } from '@/features/home/presentation/hooks/useHomeScreenData';
+import type { Schedule } from '@/features/schedule/domain/schedule.types';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Calendar, CalendarDays, Check, CheckCircle2, Clock, Crown, Grid, HandHeart, HeartHandshake, HelpCircle, MapPin, Users, XCircle } from 'lucide-react-native';
 import { useCallback, useMemo, useState } from 'react';
 import { Dimensions, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import AppModal from '../../components/ui/AppModal';
-import type { Schedule } from '@/features/schedule/domain/schedule.types';
-import { useHomeScreenData } from '@/features/home/presentation/hooks/useHomeScreenData';
 
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -29,7 +30,7 @@ export default function HomeScreen() {
   const [activeSlide, setActiveSlide] = useState(0);
   const [activeDutySlide, setActiveDutySlide] = useState(0);
   const [selectedDutyEvent, setSelectedDutyEvent] = useState<Schedule | null>(null);
-  
+
   const screenWidth = Dimensions.get('window').width;
   const cardWidth = screenWidth - 48;
   const currentUserId = currentUser?.uid ?? '';
@@ -90,7 +91,7 @@ export default function HomeScreen() {
       <View style={[styles.header, { paddingTop: Math.max(insets.top, 24) }]} pointerEvents="box-none">
         <BlurView intensity={80} tint="light" style={StyleSheet.absoluteFill} />
         <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,0.6)' }]} pointerEvents="none" />
-        
+
         <View style={styles.headerContent}>
           <View>
             <Text style={styles.greeting}>Hello,</Text>
@@ -153,7 +154,7 @@ export default function HomeScreen() {
                 );
               })}
             </ScrollView>
-            
+
             {/* Duty Pagination Dots */}
             {dutyCards.length > 1 && (
               <View style={styles.paginationRow}>
@@ -165,12 +166,15 @@ export default function HomeScreen() {
           </View>
         )}
 
+        {/* ─── Verse of the Day ───────────────────────────────────────── */}
+        <VerseOfTheDayCard />
+
         {/* ─── Hero Carousel ──────────────────────────────────────────── */}
         {heroCards.length > 0 ? (
           <View>
-            <ScrollView 
-              horizontal 
-              pagingEnabled 
+            <ScrollView
+              horizontal
+              pagingEnabled
               showsHorizontalScrollIndicator={false}
               onMomentumScrollEnd={(e) => handleHeroScrollEnd(e.nativeEvent.contentOffset.x)}
               style={styles.heroScroll}
@@ -216,13 +220,13 @@ export default function HomeScreen() {
                 );
               })}
             </ScrollView>
-            
+
             {heroCards.length > 1 && (
               <View style={styles.paginationRow}>
                 {heroCards.map((_, index) => (
-                  <View 
-                    key={`dot-${index}`} 
-                    style={[styles.paginationDot, activeSlide === index && styles.paginationDotActive]} 
+                  <View
+                    key={`dot-${index}`}
+                    style={[styles.paginationDot, activeSlide === index && styles.paginationDotActive]}
                   />
                 ))}
               </View>
@@ -288,7 +292,7 @@ export default function HomeScreen() {
               <Text style={styles.prayerTime}>{formatPrayerTimeAgo(latestPrayer.createdAt)}</Text>
             </View>
             <Text style={styles.prayerText}>{latestPrayer.request}</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.prayButton, latestPrayer.likedBy?.includes(currentUserId) && styles.prayButtonActive]}
               onPress={() => handlePray(latestPrayer.id)}
             >
@@ -316,7 +320,7 @@ export default function HomeScreen() {
           containerStyle={{ paddingHorizontal: 24, paddingBottom: 32 }}
         >
           <Text style={styles.dutyModalEventName}>{selectedDutyEvent.event || 'Sunday Worship Service'}</Text>
-          
+
           <Text style={{ fontSize: 14, color: '#4B5563', textAlign: 'center', marginBottom: 20, paddingHorizontal: 10 }}>
             You have been scheduled for the role of <Text style={{ fontWeight: 'bold', color: '#FF6596' }}>{getUserMinisterialRoles(selectedDutyEvent, currentUser.uid)}</Text>. Please accept or decline the duty below so we can notify the staff.
           </Text>
@@ -377,7 +381,7 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FAFAFA' },
-  header: { 
+  header: {
     position: 'absolute',
     top: 0,
     left: 0,
@@ -397,7 +401,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 28, fontWeight: 'bold', color: '#1a1a1a' },
   avatar: { width: 48, height: 48, borderRadius: 24 },
   scrollContent: { padding: 24, paddingTop: 12, paddingBottom: 100 },
-  dutyCarouselContent: { },
+  dutyCarouselContent: {},
   mergedDutyCard: {
     backgroundColor: '#fff',
     padding: 16,
@@ -502,10 +506,10 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 8,
   },
-  mergedConfirmedText: { 
-    fontSize: 11, 
-    fontWeight: '700', 
-    color: '#16A34A' 
+  mergedConfirmedText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#16A34A'
   },
   tapToRespondText: {
     fontSize: 11,

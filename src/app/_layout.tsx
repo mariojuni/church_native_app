@@ -8,6 +8,7 @@ import 'react-native-reanimated';
 import '../global.css';
 import { useAuthStore } from '../store/useAuthStore';
 import { useMemberStore } from '../store/useMemberStore';
+import { AudioProvider } from '../features/sermons/presentation/context/AudioContext';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -73,16 +74,20 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="scanner" options={{ presentation: 'modal', headerShown: false }} />
-          <Stack.Screen name="my-qr" options={{ presentation: 'modal', headerShown: false }} />
-          <Stack.Screen name="more" options={{ headerShown: false }} />
-          <Stack.Screen name="giving" options={{ headerShown: false }} />
-          <Stack.Screen name="version-manager" options={{ presentation: 'modal', headerShown: false }} />
-          <Stack.Screen name="+not-found" />
-        </Stack>
+        <AudioProvider>
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+            <Stack.Screen name="scanner" options={{ presentation: 'modal', headerShown: false }} />
+            <Stack.Screen name="my-qr" options={{ presentation: 'modal', headerShown: false }} />
+            <Stack.Screen name="more" options={{ headerShown: false }} />
+            <Stack.Screen name="giving" options={{ headerShown: false }} />
+            <Stack.Screen name="version-manager" options={{ presentation: 'modal', headerShown: false }} />
+            <Stack.Screen name="audio-player" options={{ presentation: 'modal', headerShown: false }} />
+            <Stack.Screen name="sermon-detail" options={{ headerShown: false }} />
+            <Stack.Screen name="+not-found" />
+          </Stack>
+        </AudioProvider>
       </ThemeProvider>
     </GestureHandlerRootView>
   );

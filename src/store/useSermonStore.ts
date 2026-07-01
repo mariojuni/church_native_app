@@ -113,8 +113,7 @@ export const useSermonStore = create<SermonState>((set, get) => ({
   },
 
   searchSermons: async (query: string) => {
-    const { filters, loading } = get();
-    if (loading) return;
+    const { filters } = get();
 
     set({ loading: true, searchQuery: query });
 

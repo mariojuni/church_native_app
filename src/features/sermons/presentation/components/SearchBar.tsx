@@ -20,7 +20,6 @@ export function SearchBar({ value, onChangeText, onClear, placeholder = 'Search 
       styles.container, 
       { 
         backgroundColor: colors.backgroundElement,
-        borderColor: isFocused ? '#FF6596' : 'transparent',
       }
     ]}>
       <Search size={20} color={colors.textSecondary} style={styles.icon} />
@@ -55,10 +54,9 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 12,
-    paddingHorizontal: Spacing.two + 2,
-    paddingVertical: Spacing.two,
-    borderWidth: 2,
+    borderRadius: 24,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: 12,
   },
   icon: {
     marginRight: Spacing.two,

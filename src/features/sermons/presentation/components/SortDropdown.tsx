@@ -1,9 +1,10 @@
 import { View, Text, StyleSheet, TouchableOpacity, Modal, Pressable, useColorScheme } from 'react-native';
 import { useState } from 'react';
-import { ArrowUpDown, Check } from 'lucide-react-native';
+import { ArrowUpDown, Check, X } from 'lucide-react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { Colors, Spacing } from '@/constants/theme';
 import type { SermonSort } from '../../domain/sermon.types';
+import * as Haptics from 'expo-haptics';
 
 interface SortDropdownProps {
   activeSort: SermonSort;
@@ -25,7 +26,13 @@ export function SortDropdown({ activeSort, onSortChange, iconOnly = false }: Sor
 
   const activeLabel = SORT_OPTIONS.find((opt) => opt.value === activeSort)?.label || 'Newest First';
 
+  const handleOpen = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setIsOpen(true);
+  };
+
   const handleSelect = (sort: SermonSort) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onSortChange(sort);
     setIsOpen(false);
   };
@@ -33,7 +40,7 @@ export function SortDropdown({ activeSort, onSortChange, iconOnly = false }: Sor
   return (
     <View>
       <TouchableOpacity
-        onPress={() => setIsOpen(true)}
+        onPress={handleOpen}
         style={[styles.trigger, { backgroundColor: colors.backgroundElement }]}
         activeOpacity={0.7}
       >
@@ -48,24 +55,28 @@ export function SortDropdown({ activeSort, onSortChange, iconOnly = false }: Sor
       <Modal
         visible={isOpen}
         transparent
-        animationType="fade"
+        animationType="slide"
         onRequestClose={() => setIsOpen(false)}
       >
-        <Pressable
-          style={styles.overlay}
-          onPress={() => setIsOpen(false)}
-        >
-          <View
+        <Pressable style={styles.overlay} onPress={() => setIsOpen(false)}>
+          <Pressable 
             style={[
-              styles.dropdown,
-              {
-                backgroundColor: colorScheme === 'dark' ? '#1C1C1E' : '#FFF',
-              },
+              styles.bottomSheet,
+              { backgroundColor: colorScheme === 'dark' ? '#1C1C1E' : '#FFF' }
             ]}
+            onPress={(e) => e.stopPropagation()}
           >
-            <Text style={[styles.dropdownTitle, { color: colors.text }]}>
-              Sort By
-            </Text>
+            {/* Grabber */}
+            <View style={styles.grabberContainer}>
+              <View style={[styles.grabber, { backgroundColor: colors.textSecondary }]} />
+            </View>
+
+            <View style={styles.header}>
+              <Text style={[styles.sheetTitle, { color: colors.text }]}>Sort By</Text>
+              <TouchableOpacity onPress={() => setIsOpen(false)} style={styles.closeButton}>
+                <X size={24} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
 
             {SORT_OPTIONS.map((option) => {
               const isActive = activeSort === option.value;
@@ -76,23 +87,29 @@ export function SortDropdown({ activeSort, onSortChange, iconOnly = false }: Sor
                   onPress={() => handleSelect(option.value)}
                   style={[
                     styles.option,
-                    { backgroundColor: isActive ? colors.backgroundElement : 'transparent' },
+                    { backgroundColor: isActive ? 'rgba(255, 101, 150, 0.1)' : 'transparent' },
                   ]}
                   activeOpacity={0.7}
                 >
                   <Text
                     style={[
                       styles.optionText,
-                      { color: isActive ? '#FF6596' : colors.text },
+                      { 
+                        color: isActive ? '#FF6596' : colors.text,
+                        fontWeight: isActive ? '700' : '500',
+                      },
                     ]}
                   >
                     {option.label}
                   </Text>
-                  {isActive && <Check size={18} color="#FF6596" strokeWidth={2.5} />}
+                  {isActive && <Check size={20} color="#FF6596" strokeWidth={3} />}
                 </TouchableOpacity>
               );
             })}
-          </View>
+            
+            {/* Safe area padding */}
+            <View style={{ height: 40 }} />
+          </Pressable>
         </Pressable>
       </Modal>
     </View>
@@ -103,10 +120,17 @@ const styles = StyleSheet.create({
   trigger: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    borderRadius: 20,
-    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 24,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   triggerText: {
     fontSize: 14,
@@ -114,40 +138,54 @@ const styles = StyleSheet.create({
   },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: Spacing.four,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'flex-end',
   },
-  dropdown: {
+  bottomSheet: {
     width: '100%',
-    maxWidth: 300,
-    borderRadius: 16,
-    padding: Spacing.two,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: Spacing.two,
+    paddingHorizontal: Spacing.four,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.1,
     shadowRadius: 16,
-    elevation: 12,
+    elevation: 24,
   },
-  dropdownTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.two,
-    marginBottom: Spacing.one,
+  grabberContainer: {
+    alignItems: 'center',
+    marginBottom: Spacing.two,
+  },
+  grabber: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    opacity: 0.3,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.four,
+  },
+  sheetTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  closeButton: {
+    padding: 4,
   },
   option: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three,
-    borderRadius: 12,
-    marginBottom: 2,
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.four,
+    borderRadius: 16,
+    marginBottom: Spacing.two,
   },
   optionText: {
-    fontSize: 15,
-    fontWeight: '500',
+    fontSize: 16,
   },
 });
